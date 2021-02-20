@@ -16,7 +16,7 @@ app.get('/', (req, res) => {
 });
 
 app.put('/inventory', async (req, res) => {
-  auth();
+  await auth();
   const { sku, quantity } = req.body;
   const updatedItems = await updateInventory(sku, quantity);
   res.json(updatedItems);
