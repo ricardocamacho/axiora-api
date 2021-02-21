@@ -2,6 +2,7 @@
 
 const database = require('./database');
 const mercadolibreApi = require('./api/mercadolibre');
+const shopifyApi = require('./api/shopify');
 
 const auth = async () => {
   const user = await database.getUser('1');
@@ -9,6 +10,9 @@ const auth = async () => {
   mercadolibreApi.setToken(user.mercadolibre.access_token);
   mercadolibreApi.setRefreshToken(user.mercadolibre.refresh_token);
   mercadolibreApi.setUserId(user.mercadolibre.user_id);
+  shopifyApi.createAxiosInstance(user.shopify.base_url);
+  shopifyApi.setToken(user.shopify.access_token);
+  shopifyApi.setLocationId(user.shopify.location_id);
 };
 
 module.exports = auth;

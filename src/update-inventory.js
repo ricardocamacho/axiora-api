@@ -2,6 +2,7 @@
 
 const database = require('./database');
 const mercadolibreApi = require('./api/mercadolibre');
+const shopifyApi = require('./api/shopify');
 
 const updateInventoryMercadolibre = async (sku, quantity) => {
   // Get item IDs having given SKU
@@ -75,17 +76,39 @@ const updateInventoryMercadolibre = async (sku, quantity) => {
   return updatedItems;
 };
 
+const updateInventoryShopify = async (sku, quantity) => {
+  const {
+    data: {
+      productVariants: { edges: products }
+    }
+  } = await shopifyApi.getProductsBySku(sku);
+  const inventoryItems = products.map(product => product.node.inventoryItem);
+  const updatedIventoryLevels = await Promise.all(
+    inventoryItems.map(async item => {
+      const itemId = item.id.split('/').pop();
+      const updatedInventoryLevel = await shopifyApi.updateInventoryLevels(
+        itemId,
+        quantity
+      );
+      return updatedInventoryLevel;
+    })
+  );
+  return updatedIventoryLevels;
+};
+
 const updateInventory = async (sku, quantity) => {
-  console.log('Update inventory from MercadoLibre and Shopify');
+  const updatedInventories = {
+    mercadolibre: null,
+    shopify: null
+  };
   // Mercadolibre
+  console.log('Update inventory for MercadoLibre');
   try {
     const mercadolibreUpdatedItems = await updateInventoryMercadolibre(
       sku,
       quantity
     );
-    return {
-      mercadolibre: mercadolibreUpdatedItems
-    };
+    updatedInventories.mercadolibre = mercadolibreUpdatedItems;
   } catch (error) {
     // If token expired, refresh token
     if (error.response.status === 401) {
@@ -102,6 +125,13 @@ const updateInventory = async (sku, quantity) => {
       return await updateInventory(sku, quantity);
     }
   }
+
+  // Shopify
+  console.log('Update inventory for Shopify');
+  const shopifyUpdatedInventories = await updateInventoryShopify(sku, quantity);
+  updatedInventories.shopify = shopifyUpdatedInventories;
+
+  return updatedInventories;
 };
 
 module.exports = updateInventory;
