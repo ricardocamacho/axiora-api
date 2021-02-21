@@ -1,5 +1,6 @@
 'use strict';
 
+const database = require('./database');
 const mercadolibreApi = require('./api/mercadolibre');
 
 const updateInventoryMercadolibre = async (sku, quantity) => {
@@ -76,13 +77,29 @@ const updateInventoryMercadolibre = async (sku, quantity) => {
 
 const updateInventory = async (sku, quantity) => {
   console.log('Update inventory from MercadoLibre and Shopify');
-  const mercadolibreUpdatedItems = await updateInventoryMercadolibre(
-    sku,
-    quantity
-  );
-  return {
-    mercadolibre: mercadolibreUpdatedItems
-  };
+  // Mercadolibre
+  try {
+    const mercadolibreUpdatedItems = await updateInventoryMercadolibre(
+      sku,
+      quantity
+    );
+    return {
+      mercadolibre: mercadolibreUpdatedItems
+    };
+  } catch (error) {
+    if (error.response.status === 401) {
+      mercadolibreApi.setToken(null);
+      const refreshToken = await mercadolibreApi.refreshToken();
+      await database.updateToken(
+        '1',
+        refreshToken.access_token,
+        refreshToken.refresh_token
+      );
+      mercadolibreApi.setToken(refreshToken.access_token);
+      mercadolibreApi.setRefreshToken(refreshToken.refresh_token);
+      return await updateInventory(sku, quantity);
+    }
+  }
 };
 
 module.exports = updateInventory;

@@ -12,8 +12,27 @@ const getUser = async id => {
   return Item;
 };
 
+const updateToken = async (userId, accessToken, refreshToken) => {
+  const params = {
+    TableName: USERS_TABLE,
+    Key: {
+      id: userId
+    },
+    UpdateExpression:
+      'set mercadolibre.access_token = :a, mercadolibre.refresh_token=:b',
+    ExpressionAttributeValues: {
+      ':a': accessToken,
+      ':b': refreshToken
+    },
+    ReturnValues: 'UPDATED_NEW'
+  };
+  const { Attributes } = await dynamoDb.update(params).promise();
+  return Attributes;
+};
+
 const database = {
-  getUser
+  getUser,
+  updateToken
 };
 
 module.exports = database;
