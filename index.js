@@ -3,12 +3,21 @@
 const serverless = require('serverless-http');
 const bodyParser = require('body-parser');
 const express = require('express');
+const cors = require('cors');
 
 const auth = require('./src/auth');
 const updateInventory = require('./src/update-inventory');
 
 const app = express();
 
+app.use(
+  cors({
+    origin: [
+      'http://mercadolibre-gogo.s3-website.us-east-2.amazonaws.com',
+      'http://localhost:3000'
+    ]
+  })
+);
 app.use(bodyParser.json({ strict: false }));
 
 app.get('/', (req, res) => {
