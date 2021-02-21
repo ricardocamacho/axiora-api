@@ -23,6 +23,7 @@ frameworkVersion: '2'
 custom:
   serverless-offline:
     noPrependStageInUrl: true
+    httpPort: 8080
   dynamodb:
     axioraUsersTable: ${self:service}-users-${self:provider.stage}
 
