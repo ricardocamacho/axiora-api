@@ -87,7 +87,9 @@ const updateInventory = async (sku, quantity) => {
       mercadolibre: mercadolibreUpdatedItems
     };
   } catch (error) {
+    // If token expired, refresh token
     if (error.response.status === 401) {
+      console.log('Refreshing token...');
       mercadolibreApi.setToken(null);
       const refreshToken = await mercadolibreApi.refreshToken();
       await database.updateToken(
