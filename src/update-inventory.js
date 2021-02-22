@@ -26,7 +26,10 @@ const updateInventoryMercadolibre = async (sku, quantity) => {
           const variationSkuAttr =
             variation.attributes &&
             variation.attributes.find(
-              attr => attr.id === 'SELLER_SKU' && attr.value_name === sku
+              attr =>
+                attr.id === 'SELLER_SKU' &&
+                attr.value_name &&
+                attr.value_name === sku
             );
           if (variationSkuAttr) {
             variation.available_quantity = quantity;
@@ -61,9 +64,12 @@ const updateInventoryMercadolibre = async (sku, quantity) => {
           );
         if (variationSkuAttr) {
           formattedVariation.sku = variationSkuAttr.value_name;
-        }
-        if (variationSkuAttr.value_name === sku) {
-          formattedVariation.updated = true;
+          if (
+            variationSkuAttr.value_name &&
+            variationSkuAttr.value_name === sku
+          ) {
+            formattedVariation.updated = true;
+          }
         }
         return formattedVariation;
       });
@@ -110,6 +116,7 @@ const updateInventory = async (sku, quantity) => {
     );
     updatedInventories.mercadolibre = mercadolibreUpdatedItems;
   } catch (error) {
+    console.log('HEY', error);
     // If token expired, refresh token
     if (error.response.status === 401) {
       console.log('Refreshing token...');
