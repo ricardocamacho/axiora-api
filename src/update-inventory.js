@@ -23,6 +23,7 @@ const updateInventoryMercadolibre = async (sku, quantity) => {
         // Iterate variations and update available quantity for selected SKU
         variations.forEach(variation => {
           delete variation.catalog_product_id;
+          delete variation.inventory_id;
           const variationSkuAttr =
             variation.attributes &&
             variation.attributes.find(
