@@ -2,7 +2,7 @@
 
 const database = require('../database');
 const mercadolibreApi = require('../api/mercadolibre');
-// const shopifyApi = require('../api/shopify');
+const shopifyApi = require('../api/shopify');
 const mercadolibre = require('../mercadolibre');
 
 const adjustInventoryBySkuMercadolibre = async (sku, purchasedQuantity) => {
@@ -80,6 +80,34 @@ const tryAdjustInventoryBySkuMercadoLibre = async (sku, purchasedQuantity) => {
   }
 };
 
+const adjustInventoryBySkuShopify = async (
+  variantId,
+  sku,
+  purchasedQuantity
+) => {
+  const {
+    data: {
+      productVariants: { edges: products }
+    }
+  } = await shopifyApi.getProductsBySku(sku);
+  const allExceptPurchased = products.filter(product => {
+    return Number(product.node.legacyResourceId) !== variantId;
+  });
+  const inventoryLevelsIds = allExceptPurchased.map(
+    product => product.node.inventoryItem.inventoryLevel.id
+  );
+  const inventoryLevelsIdsUpdated = await Promise.all(
+    inventoryLevelsIds.map(async inventoryLevelId => {
+      const inventoryLevelAdjusted = await shopifyApi.adjustInventoryLevelQuantity(
+        inventoryLevelId,
+        purchasedQuantity * -1
+      );
+      return inventoryLevelAdjusted;
+    })
+  );
+  return inventoryLevelsIdsUpdated;
+};
+
 const orderCreated = async orderItems => {
   const adjustedInventories = {
     mercadolibre: null,
@@ -88,11 +116,22 @@ const orderCreated = async orderItems => {
   // MercadoLibre
   adjustedInventories.mercadolibre = await Promise.all(
     orderItems.map(async item => {
-      const adjustedItem = await tryAdjustInventoryBySkuMercadoLibre(
+      const adjustedItems = await tryAdjustInventoryBySkuMercadoLibre(
         item.sku,
         item.quantity
       );
-      return adjustedItem;
+      return { sku: item.sku, adjustedItems };
+    })
+  );
+  // Shopify (adjust all SKU inventories except the one being purchased)
+  adjustedInventories.shopify = await Promise.all(
+    orderItems.map(async item => {
+      const adjustedItems = await adjustInventoryBySkuShopify(
+        item.variant_id,
+        item.sku,
+        item.quantity
+      );
+      return { sku: item.sku, adjustedItems };
     })
   );
   return adjustedInventories;

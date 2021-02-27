@@ -23,7 +23,7 @@ const setLocationId = id => {
 
 const getProductsBySku = async sku => {
   const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
-    query: `query ($filter: String!) {
+    query: `query ($filter: String!, $locationId: ID!) {
       productVariants(first: 10, query: $filter) {
         edges {
           node {
@@ -36,13 +36,17 @@ const getProductsBySku = async sku => {
             inventoryItem {
               id
               legacyResourceId
+              inventoryLevel(locationId: $locationId) {
+                id
+              }
             }
           }
         }
       }
     }`,
     variables: {
-      filter: `sku:${sku}`
+      filter: `sku:${sku}`,
+      locationId
     }
   });
   return response.data;
@@ -60,12 +64,40 @@ const updateInventoryLevels = async (inventoryItemId, quantity) => {
   return response.data;
 };
 
+const adjustInventoryLevelQuantity = async (
+  inventoryLevelId,
+  availableDelta
+) => {
+  const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
+    query: `mutation adjustInventoryLevelQuantity($inventoryAdjustQuantityInput: InventoryAdjustQuantityInput!) {
+      inventoryAdjustQuantity(input: $inventoryAdjustQuantityInput) {
+        inventoryLevel {
+          id
+          available
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }`,
+    variables: {
+      inventoryAdjustQuantityInput: {
+        inventoryLevelId,
+        availableDelta
+      }
+    }
+  });
+  return response.data;
+};
+
 const shopifyApi = {
   createAxiosInstance,
   setToken,
   setLocationId,
   getProductsBySku,
-  updateInventoryLevels
+  updateInventoryLevels,
+  adjustInventoryLevelQuantity
 };
 
 module.exports = shopifyApi;
