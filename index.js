@@ -7,6 +7,7 @@ const cors = require('cors');
 
 const auth = require('./src/auth');
 const updateInventory = require('./src/update-inventory');
+const shopifyOrderCreated = require('./src/webhooks/shopify-order-created');
 
 const app = express();
 
@@ -29,6 +30,13 @@ app.put('/inventory', async (req, res) => {
   const { sku, quantity } = req.body;
   const updatedItems = await updateInventory(sku, quantity);
   res.json(updatedItems);
+});
+
+app.post('/shopify/order-created', async (req, res) => {
+  await auth();
+  const { line_items } = req.body;
+  const orderCreatedResponse = await shopifyOrderCreated(line_items);
+  res.json(orderCreatedResponse);
 });
 
 module.exports.handler = serverless(app);

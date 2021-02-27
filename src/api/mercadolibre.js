@@ -67,6 +67,11 @@ const updateItem = async (itemId, item) => {
   return response.data;
 };
 
+const getOrder = async orderId => {
+  const response = await axiosInstance.get(`/orders/${orderId}`);
+  return response.data;
+};
+
 const mercadolibreApi = {
   setToken,
   setRefreshToken,
@@ -74,7 +79,8 @@ const mercadolibreApi = {
   refreshToken,
   getItemsBySKU,
   getItem,
-  updateItem
+  updateItem,
+  getOrder
 };
 
 module.exports = mercadolibreApi;
