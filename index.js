@@ -6,6 +6,7 @@ const express = require('express');
 const cors = require('cors');
 
 const auth = require('./src/auth');
+const shopify = require('./src/shopify');
 const updateInventory = require('./src/update-inventory');
 const shopifyOrderCreated = require('./src/webhooks/shopify-order-created');
 
@@ -30,6 +31,12 @@ app.put('/inventory', async (req, res) => {
   const { sku, quantity } = req.body;
   const updatedItems = await updateInventory(sku, quantity);
   res.json(updatedItems);
+});
+
+app.post('/shopify/product', async (req, res) => {
+  await auth();
+  const createdProduct = await shopify.createProduct(req.body);
+  res.json(createdProduct);
 });
 
 app.post('/shopify/order-created', async (req, res) => {

@@ -91,13 +91,31 @@ const adjustInventoryLevelQuantity = async (
   return response.data;
 };
 
+const createProduct = async productInput => {
+  const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
+    query: `mutation($productInput: ProductInput!) {
+      productCreate(input: $productInput) {
+        product {
+          id
+          title
+        }
+      }
+    }`,
+    variables: {
+      productInput
+    }
+  });
+  return response.data;
+};
+
 const shopifyApi = {
   createAxiosInstance,
   setToken,
   setLocationId,
   getProductsBySku,
   updateInventoryLevels,
-  adjustInventoryLevelQuantity
+  adjustInventoryLevelQuantity,
+  createProduct
 };
 
 module.exports = shopifyApi;
