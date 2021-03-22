@@ -7,7 +7,6 @@ const CLIENT_SECRET = 'O4S9ubYIVvH1EAB4wlz4BZTTPnvm1nO4';
 
 const axiosInstance = axios.create({
   baseURL: 'https://api.mercadolibre.com',
-  timeout: 20000,
   headers: {
     'Content-Type': 'application/json'
   }

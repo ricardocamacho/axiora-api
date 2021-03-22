@@ -6,7 +6,6 @@ let locationId;
 const createAxiosInstance = baseUrl => {
   axiosInstance = axios.create({
     baseURL: baseUrl,
-    timeout: 20000,
     headers: {
       'Content-Type': 'application/json'
     }

@@ -88,7 +88,6 @@ const updateInventory = async (sku, quantity) => {
     );
     updatedInventories.mercadolibre = mercadolibreUpdatedItems;
   } catch (error) {
-    console.log('HEY', error);
     // If token expired, refresh token
     if (error.response.status === 401) {
       console.log('Refreshing token...');
