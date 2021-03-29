@@ -5,6 +5,10 @@ const bodyParser = require('body-parser');
 const express = require('express');
 const cors = require('cors');
 
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
+
 const auth = require('./src/auth');
 const shopify = require('./src/shopify');
 const updateInventory = require('./src/update-inventory');
@@ -26,21 +30,59 @@ app.get('/', (req, res) => {
   res.send('Axiora API');
 });
 
-app.put('/inventory', async (req, res) => {
-  await auth();
+app.post('/sign-up', async (req, res) => {
+  const { email, password } = req.body;
+  if (email && password) {
+    const { userId, token } = await auth.signUp(email, password);
+    res.status(201).send({
+      userId,
+      email,
+      token
+    });
+  } else {
+    res.status(400).send({
+      error: 'Email and password are required'
+    });
+  }
+});
+
+app.post('/sign-in', async (req, res) => {
+  const { email, password } = req.body;
+  if (email && password) {
+    try {
+      const { userId, token } = await auth.signIn(email, password);
+      res.status(200).send({
+        userId,
+        email,
+        token
+      });
+    } catch (err) {
+      res.status(400).send({
+        error: err.message
+      });
+    }
+  } else {
+    res.status(400).send({
+      error: 'Email and password are required'
+    });
+  }
+});
+
+app.put('/inventory', auth.verifyTokenMiddleware, async (req, res) => {
+  await auth.channelsSetAuth();
   const { sku, quantity } = req.body;
   const updatedItems = await updateInventory(sku, quantity);
   res.json(updatedItems);
 });
 
 app.post('/shopify/product', async (req, res) => {
-  await auth();
+  await auth.channelsSetAuth();
   const createdProduct = await shopify.createProduct(req.body);
   res.json(createdProduct);
 });
 
 app.post('/shopify/order-created', async (req, res) => {
-  await auth();
+  await auth.channelsSetAuth();
   const { line_items } = req.body;
   const orderCreatedResponse = await shopifyOrderCreated(line_items);
   res.json(orderCreatedResponse);
