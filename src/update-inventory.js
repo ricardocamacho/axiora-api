@@ -8,7 +8,7 @@ const mercadolibre = require('./mercadolibre');
 const updateInventoryMercadolibre = async (sku, quantity) => {
   // Get item IDs having given SKU
   const { results: itemIds } = await mercadolibreApi.getItemsBySKU(sku, {
-    status: 'active'
+    // status: 'active'
   });
   // For each item ID
   let updatedItems = await Promise.all(
