@@ -5,24 +5,30 @@ const mercadolibreApi = require('./api/mercadolibre');
 const shopifyApi = require('./api/shopify');
 const mercadolibre = require('./mercadolibre');
 
-const updateInventoryMercadolibre = async (sku, quantity) => {
+const updateInventoryMercadolibre = async (storeApi, sku, quantity) => {
   // Get item IDs having given SKU
-  const { results: itemIds } = await mercadolibreApi.getItemsBySKU(sku, {
+  const { results: itemIds } = await storeApi.getItemsBySKU(sku, {
     // status: 'active'
   });
   // For each item ID
   let updatedItems = await Promise.all(
     itemIds.map(async itemId => {
-      const updatedItem = await mercadolibre.updateItemSkuQuantity(
-        itemId,
-        sku,
-        quantity
-      );
-      return { id: itemId, ...updatedItem };
+      try {
+        const updatedItem = await mercadolibre.updateItemSkuQuantity(
+          storeApi,
+          itemId,
+          sku,
+          quantity
+        );
+        return { id: itemId, ...updatedItem };
+      } catch (error) {
+        return error.response.data;
+      }
     })
   );
   // Format response for easier reading
   updatedItems = updatedItems.map(item => {
+    if (item.error) return item;
     const updatedItem = { id: item.id };
     if (item.variations && item.variations.length) {
       updatedItem.variations = item.variations.map(variation => {
@@ -79,30 +85,19 @@ const updateInventory = async (sku, quantity) => {
     mercadolibre: null,
     shopify: null
   };
+
   // Mercadolibre
   console.log('Update inventory for MercadoLibre');
-  try {
-    const mercadolibreUpdatedItems = await updateInventoryMercadolibre(
-      sku,
-      quantity
-    );
-    updatedInventories.mercadolibre = mercadolibreUpdatedItems;
-  } catch (error) {
-    // If token expired, refresh token
-    if (error.response.status === 401) {
-      console.log('Refreshing token...');
-      mercadolibreApi.setToken(null);
-      const refreshToken = await mercadolibreApi.refreshToken();
-      await database.updateToken(
-        '1',
-        refreshToken.access_token,
-        refreshToken.refresh_token
+  updatedInventories.mercadolibre = await Promise.all(
+    mercadolibreApi.stores.map(async store => {
+      const updatedInventoryMercadolibre = await updateInventoryMercadolibre(
+        store.api,
+        sku,
+        quantity
       );
-      mercadolibreApi.setToken(refreshToken.access_token);
-      mercadolibreApi.setRefreshToken(refreshToken.refresh_token);
-      return await updateInventory(sku, quantity);
-    }
-  }
+      return updatedInventoryMercadolibre;
+    })
+  );
 
   // Shopify
   console.log('Update inventory for Shopify');

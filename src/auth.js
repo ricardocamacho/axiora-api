@@ -1,7 +1,7 @@
 'use strict';
 
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 
 const database = require('./database');
 const mercadolibreApi = require('./api/mercadolibre');
@@ -51,12 +51,13 @@ const signIn = async (email, password) => {
   };
 };
 
-const channelsSetAuth = async () => {
-  const user = await database.getUser('1');
+const channelsSetAuth = async userId => {
   // Get token and user id from dynamo...
-  mercadolibreApi.setToken(user.mercadolibre.access_token);
-  mercadolibreApi.setRefreshToken(user.mercadolibre.refresh_token);
-  mercadolibreApi.setUserId(user.mercadolibre.user_id);
+  const user = await database.getUser(userId);
+  mercadolibreApi.setStores(user.mercadolibre, userId);
+  // mercadolibreApi.setToken(user.mercadolibre.access_token);
+  // mercadolibreApi.setRefreshToken(user.mercadolibre.refresh_token);
+  // mercadolibreApi.setUserId(user.mercadolibre.user_id);
   shopifyApi.createAxiosInstance(user.shopify.base_url);
   shopifyApi.setToken(user.shopify.access_token);
   shopifyApi.setLocationId(user.shopify.location_id);

@@ -1,6 +1,42 @@
+const database = require('./database');
 const mercadolibreApi = require('./api/mercadolibre');
 
+const addStore = async (userId, meliUserId, code, redirectUri) => {
+  const user = await database.getUser(userId);
+  const { access_token, refresh_token } = await mercadolibreApi.getTokens(
+    code,
+    redirectUri
+  );
+  user.mercadolibre.push({
+    user_id: meliUserId,
+    access_token,
+    refresh_token
+  });
+  const updatedUser = await database.updateMercadolibreStores(
+    userId,
+    user.mercadolibre
+  );
+  return updatedUser;
+};
+
+const getStoreQuestions = async store => {
+  const storeQuestions = await store.api.getQuestions();
+  return storeQuestions;
+};
+
+const getQuestions = async () => {
+  if (!mercadolibreApi.stores) throw Error('No stores found');
+  const questions = await Promise.all(
+    mercadolibreApi.stores.map(async store => {
+      const storeQuestions = await getStoreQuestions(store);
+      return storeQuestions;
+    })
+  );
+  return questions;
+};
+
 const updateItemSkuQuantity = async (
+  storeApi,
   itemId,
   sku,
   quantity,
@@ -8,7 +44,7 @@ const updateItemSkuQuantity = async (
 ) => {
   let updatedItem;
   // Get the item
-  const item = await mercadolibreApi.getItem(itemId, {
+  const item = await storeApi.getItem(itemId, {
     include_attributes: 'all'
   });
   // If the item has variations
@@ -33,13 +69,13 @@ const updateItemSkuQuantity = async (
       }
     });
     // Save the item variations
-    updatedItem = await mercadolibreApi.updateItem(itemId, {
+    updatedItem = await storeApi.updateItem(itemId, {
       variations
     });
   }
   // If the item does not have variations
   else {
-    updatedItem = await mercadolibreApi.updateItem(itemId, {
+    updatedItem = await storeApi.updateItem(itemId, {
       available_quantity: purchasedQuantity
         ? item.available_quantity - purchasedQuantity
         : quantity
@@ -49,6 +85,8 @@ const updateItemSkuQuantity = async (
 };
 
 const mercadolibre = {
+  addStore,
+  getQuestions,
   updateItemSkuQuantity
 };
 

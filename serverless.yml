@@ -19,6 +19,7 @@ org: ricardocamacho21
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
 frameworkVersion: '2'
+useDotenv: true
 
 custom:
   serverless-offline:
@@ -32,18 +33,25 @@ provider:
   runtime: nodejs12.x
   region: us-east-2
   lambdaHashingVersion: 20201221
+  apiGateway:
+    shouldStartNameWithService: true
 
-  iamRoleStatements:
-    - Effect: 'Allow'
-      Action:
-        - 'dynamodb:GetItem'
-        - 'dynamodb:PutItem'
-        - 'dynamodb:UpdateItem'
-      Resource:
-        - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodb.axioraUsersTable}
-        - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodb.axioraUsersTable}/index/id
+  iam:
+    role:
+      statements:
+        - Effect: 'Allow'
+          Action:
+            - 'dynamodb:Query'
+            - 'dynamodb:GetItem'
+            - 'dynamodb:PutItem'
+            - 'dynamodb:UpdateItem'
+          Resource:
+            - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodb.axioraUsersTable}
+            - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodb.axioraUsersTable}/index/id
+            - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodb.axioraUsersTable}/index/email-index
 
   environment:
+    #JWT_SECRET_KEY: ${env:JWT_SECRET_KEY}
     DYNAMODB_AXIORA_USERS_TABLE: ${self:custom.dynamodb.axioraUsersTable}
 
 functions:

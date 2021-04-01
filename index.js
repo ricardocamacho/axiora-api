@@ -10,6 +10,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const auth = require('./src/auth');
+const mercadolibre = require('./src/mercadolibre');
 const shopify = require('./src/shopify');
 const updateInventory = require('./src/update-inventory');
 const shopifyOrderCreated = require('./src/webhooks/shopify-order-created');
@@ -27,7 +28,7 @@ app.use(
 app.use(bodyParser.json({ strict: false }));
 
 app.get('/', (req, res) => {
-  res.send('Axiora API');
+  res.send('Axiora API ' + process.env.NODE_ENV);
 });
 
 app.post('/sign-up', async (req, res) => {
@@ -68,21 +69,50 @@ app.post('/sign-in', async (req, res) => {
   }
 });
 
+app.post(
+  '/mercadolibre/store',
+  auth.verifyTokenMiddleware,
+  async (req, res) => {
+    const { meliUserId, code, redirectUri } = req.body;
+    try {
+      const updatedUser = await mercadolibre.addStore(
+        req.userId,
+        meliUserId,
+        code,
+        redirectUri
+      );
+      res.status(201).send(updatedUser);
+    } catch (error) {
+      res.status(error.response.status).send(error.response.data);
+    }
+  }
+);
+
+app.get(
+  '/mercadolibre/questions',
+  auth.verifyTokenMiddleware,
+  async (req, res) => {
+    await auth.channelsSetAuth(req.userId);
+    const questions = await mercadolibre.getQuestions();
+    res.status(200).send(questions);
+  }
+);
+
 app.put('/inventory', auth.verifyTokenMiddleware, async (req, res) => {
-  await auth.channelsSetAuth();
+  await auth.channelsSetAuth(req.userId);
   const { sku, quantity } = req.body;
   const updatedItems = await updateInventory(sku, quantity);
   res.json(updatedItems);
 });
 
-app.post('/shopify/product', async (req, res) => {
-  await auth.channelsSetAuth();
+app.post('/shopify/product/:userId', async (req, res) => {
+  await auth.channelsSetAuth(req.params.userId);
   const createdProduct = await shopify.createProduct(req.body);
   res.json(createdProduct);
 });
 
-app.post('/shopify/order-created', async (req, res) => {
-  await auth.channelsSetAuth();
+app.post('/shopify/order-created/:userId', async (req, res) => {
+  await auth.channelsSetAuth(req.params.userId);
   const { line_items } = req.body;
   const orderCreatedResponse = await shopifyOrderCreated(line_items);
   res.json(orderCreatedResponse);
