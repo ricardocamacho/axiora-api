@@ -1,6 +1,5 @@
 'use strict';
 
-const database = require('./database');
 const mercadolibreApi = require('./api/mercadolibre');
 const shopifyApi = require('./api/shopify');
 const mercadolibre = require('./mercadolibre');

@@ -1,93 +1,60 @@
-const AWS = require('aws-sdk');
-const { nanoid } = require('nanoid');
+const faunadb = require('faunadb');
 
-const USERS_TABLE = process.env.DYNAMODB_AXIORA_USERS_TABLE;
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
+const { Create, Collection, Get, Ref, Match, Index, Update } = faunadb.query;
+
+const client = new faunadb.Client({
+  secret: process.env.FAUNA_SERVER_SECRET
+});
 
 const getUser = async id => {
-  const params = {
-    TableName: USERS_TABLE,
-    Key: { id }
+  const result = await client.query(Get(Ref(Collection('Users'), id)));
+  return {
+    id: result.ref.id,
+    ...result.data
   };
-  const { Item } = await dynamoDb.get(params).promise();
-  return Item;
 };
 
 const getUserByEmail = async email => {
-  const params = {
-    TableName: USERS_TABLE,
-    KeyConditionExpression: 'email = :email',
-    ExpressionAttributeValues: {
-      ':email': email
-    },
-    IndexName: 'email-index'
+  const result = await client.query(Get(Match(Index('Users_by_email'), email)));
+  return {
+    id: result.ref.id,
+    ...result.data
   };
-  const { Items } = await dynamoDb.query(params).promise();
-  if (Items && Items.length) {
-    return Items[0];
-  }
 };
 
 const createUser = async (email, password) => {
-  const id = nanoid();
-  const params = {
-    TableName: USERS_TABLE,
-    Item: {
-      id,
-      email,
-      password,
-      active: true,
-      created_at: new Date().toISOString(),
-      mercadolibre: [],
-      shopify: []
-    },
-    ReturnValues: 'ALL_OLD'
-  };
-  await dynamoDb.put(params).promise();
+  const result = await client.query(
+    Create(Collection('Users'), {
+      data: {
+        email,
+        password,
+        active: false,
+        created_at: new Date().toISOString(),
+        mercadolibre: []
+      }
+    })
+  );
   return {
-    id
+    id: result.ref.id,
+    ...result.data
   };
-};
-
-const updateToken = async (userId, accessToken, refreshToken) => {
-  const params = {
-    TableName: USERS_TABLE,
-    Key: {
-      id: userId
-    },
-    UpdateExpression:
-      'set mercadolibre.access_token = :a, mercadolibre.refresh_token=:b',
-    ExpressionAttributeValues: {
-      ':a': accessToken,
-      ':b': refreshToken
-    },
-    ReturnValues: 'UPDATED_NEW'
-  };
-  const { Attributes } = await dynamoDb.update(params).promise();
-  return Attributes;
 };
 
 const updateMercadolibreStores = async (userId, mercadolibreStores) => {
-  const params = {
-    TableName: USERS_TABLE,
-    Key: {
-      id: userId
-    },
-    UpdateExpression: 'set mercadolibre = :a',
-    ExpressionAttributeValues: {
-      ':a': mercadolibreStores
-    },
-    ReturnValues: 'UPDATED_NEW'
-  };
-  const { Attributes } = await dynamoDb.update(params).promise();
-  return Attributes;
+  const { data } = await client.query(
+    Update(Ref(Collection('Users'), userId), {
+      data: {
+        mercadolibre: mercadolibreStores
+      }
+    })
+  );
+  return data.mercadolibre;
 };
 
 const database = {
   createUser,
   getUser,
   getUserByEmail,
-  updateToken,
   updateMercadolibreStores
 };
 

@@ -52,15 +52,14 @@ const signIn = async (email, password) => {
 };
 
 const channelsSetAuth = async userId => {
-  // Get token and user id from dynamo...
+  // Get token and user id from database...
   const user = await database.getUser(userId);
   mercadolibreApi.setStores(user.mercadolibre, userId);
-  // mercadolibreApi.setToken(user.mercadolibre.access_token);
-  // mercadolibreApi.setRefreshToken(user.mercadolibre.refresh_token);
-  // mercadolibreApi.setUserId(user.mercadolibre.user_id);
-  shopifyApi.createAxiosInstance(user.shopify.base_url);
-  shopifyApi.setToken(user.shopify.access_token);
-  shopifyApi.setLocationId(user.shopify.location_id);
+  if (user.shopify) {
+    shopifyApi.createAxiosInstance(user.shopify.base_url);
+    shopifyApi.setToken(user.shopify.access_token);
+    shopifyApi.setLocationId(user.shopify.location_id);
+  }
 };
 
 module.exports = {

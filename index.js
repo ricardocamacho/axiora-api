@@ -34,12 +34,19 @@ app.get('/', (req, res) => {
 app.post('/sign-up', async (req, res) => {
   const { email, password } = req.body;
   if (email && password) {
-    const { userId, token } = await auth.signUp(email, password);
-    res.status(201).send({
-      userId,
-      email,
-      token
-    });
+    try {
+      const { userId, token } = await auth.signUp(email, password);
+      res.status(201).send({
+        userId,
+        email,
+        token
+      });
+    } catch (error) {
+      res.status(400).send({
+        error: error.name,
+        message: error.message
+      });
+    }
   } else {
     res.status(400).send({
       error: 'Email and password are required'
@@ -57,9 +64,10 @@ app.post('/sign-in', async (req, res) => {
         email,
         token
       });
-    } catch (err) {
+    } catch (error) {
       res.status(400).send({
-        error: err.message
+        error: error.name,
+        message: error.message
       });
     }
   } else {
@@ -83,7 +91,10 @@ app.post(
       );
       res.status(201).send(updatedUser);
     } catch (error) {
-      res.status(error.response.status).send(error.response.data);
+      res.status(400).send({
+        error: error.name,
+        message: error.message
+      });
     }
   }
 );
