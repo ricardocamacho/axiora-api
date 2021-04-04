@@ -26,7 +26,9 @@ const verifyTokenMiddleware = async (req, res, next) => {
 
 const signUp = async (email, password) => {
   const hash = await bcrypt.hash(password, 10);
-  const { id: userId } = await database.createUser(email, hash);
+  const {
+    ref: { id: userId }
+  } = await database.createUser(email, hash);
   const token = jwt.sign({ userId, email }, process.env.JWT_SECRET_KEY);
   return {
     userId,
@@ -35,11 +37,13 @@ const signUp = async (email, password) => {
 };
 
 const signIn = async (email, password) => {
-  const user = await database.getUserByEmail(email);
-  if (!user) {
+  const {
+    data: { password: userPassword },
+    ref: { id: userId }
+  } = await database.getUserByEmail(email);
+  if (!userId) {
     throw Error('User not found');
   }
-  const { id: userId, password: userPassword } = user;
   const compareResult = await bcrypt.compare(password, userPassword);
   if (!compareResult) {
     throw Error('Email and password does not match');
@@ -52,9 +56,12 @@ const signIn = async (email, password) => {
 };
 
 const channelsSetAuth = async userId => {
-  // Get token and user id from database...
-  const user = await database.getUser(userId);
-  mercadolibreApi.setStores(user.mercadolibre, userId);
+  const { data: stores } = await database.getStores(userId);
+  const mercadolibreStores = stores
+    .filter(store => store.data.channel === 'mercadolibre')
+    .map(store => store.data);
+  mercadolibreApi.setStores(mercadolibreStores, userId);
+  const { data: user } = await database.getUser(userId);
   if (user.shopify) {
     shopifyApi.createAxiosInstance(user.shopify.base_url);
     shopifyApi.setToken(user.shopify.access_token);

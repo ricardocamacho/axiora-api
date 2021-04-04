@@ -52,16 +52,10 @@ class MercadoLibreApi {
           this.setToken(access_token);
           this.setRefreshToken(refresh_token);
           // Find store in database and update it with new tokens
-          const user = await database.getUser(this.userId);
-          const store = user.mercadolibre.find(
-            s => s.user_id === this.meliUserId
-          );
-          store.access_token = access_token;
-          store.refresh_token = refresh_token;
-          await database.updateMercadolibreStores(
-            this.userId,
-            user.mercadolibre
-          );
+          const {
+            ref: { id: storeId }
+          } = await database.getStore(this.meliUserId);
+          await database.updateStore(storeId, access_token, refresh_token);
           // Try the original request with the new token
           originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
           return this.axiosInstance.request(originalRequest);

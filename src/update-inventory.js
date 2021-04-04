@@ -1,5 +1,6 @@
 'use strict';
 
+const database = require('./database');
 const mercadolibreApi = require('./api/mercadolibre');
 const shopifyApi = require('./api/shopify');
 const mercadolibre = require('./mercadolibre');
@@ -79,7 +80,7 @@ const updateInventoryShopify = async (sku, quantity) => {
   return updatedIventoryLevels;
 };
 
-const updateInventory = async (sku, quantity) => {
+const updateInventory = async (userId, sku, quantity) => {
   const updatedInventories = {
     mercadolibre: null,
     shopify: null
@@ -99,9 +100,15 @@ const updateInventory = async (sku, quantity) => {
   );
 
   // Shopify
-  console.log('Update inventory for Shopify');
-  const shopifyUpdatedInventories = await updateInventoryShopify(sku, quantity);
-  updatedInventories.shopify = shopifyUpdatedInventories;
+  const { data: user } = await database.getUser(userId);
+  if (user.shopify) {
+    console.log('Update inventory for Shopify');
+    const shopifyUpdatedInventories = await updateInventoryShopify(
+      sku,
+      quantity
+    );
+    updatedInventories.shopify = shopifyUpdatedInventories;
+  }
 
   return updatedInventories;
 };

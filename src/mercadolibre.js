@@ -1,22 +1,28 @@
 const database = require('./database');
 const mercadolibreApi = require('./api/mercadolibre');
+const { refreshToken } = require('./api/mercadolibre');
 
 const addStore = async (userId, meliUserId, code, redirectUri) => {
-  const user = await database.getUser(userId);
+  const { data: stores } = await database.getStores(userId);
+  const isAlreadyAdded = stores.find(
+    store => store.data.user_id === meliUserId
+  );
+  if (isAlreadyAdded) {
+    throw Error('Store is already added');
+  }
   const { access_token, refresh_token } = await mercadolibreApi.getTokens(
     code,
     redirectUri
   );
-  user.mercadolibre.push({
+  const addedStore = await database.addStore(userId, {
+    channel: 'mercadolibre',
     user_id: meliUserId,
     access_token,
     refresh_token
   });
-  const updatedUser = await database.updateMercadolibreStores(
-    userId,
-    user.mercadolibre
-  );
-  return updatedUser;
+  return {
+    id: addedStore.ref.id
+  };
 };
 
 const getStoreQuestions = async store => {
