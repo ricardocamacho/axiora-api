@@ -1,5 +1,6 @@
 'use strict';
 
+const database = require('../database');
 const mercadolibreApi = require('../api/mercadolibre');
 const shopifyApi = require('../api/shopify');
 const mercadolibre = require('../mercadolibre');
@@ -113,17 +114,21 @@ const orderCreated = async orderItems => {
       return adjustedInventoryMercadolibre;
     })
   );
-  // Shopify (adjust all SKU inventories except the one being purchased)
-  adjustedInventories.shopify = await Promise.all(
-    orderItems.map(async item => {
-      const adjustedItems = await adjustInventoryBySkuShopify(
-        item.variant_id,
-        item.sku,
-        item.quantity
-      );
-      return { sku: item.sku, adjustedItems };
-    })
-  );
+
+  const { data: user } = await database.getUser(userId);
+  if (user.shopify) {
+    // Shopify (adjust all SKU inventories except the one being purchased)
+    adjustedInventories.shopify = await Promise.all(
+      orderItems.map(async item => {
+        const adjustedItems = await adjustInventoryBySkuShopify(
+          item.variant_id,
+          item.sku,
+          item.quantity
+        );
+        return { sku: item.sku, adjustedItems };
+      })
+    );
+  }
   return adjustedInventories;
 };
 

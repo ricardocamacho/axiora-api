@@ -34,12 +34,19 @@ app.get('/', (req, res) => {
 app.post('/sign-up', async (req, res) => {
   const { email, password } = req.body;
   if (email && password) {
-    const { userId, token } = await auth.signUp(email, password);
-    res.status(201).send({
-      userId,
-      email,
-      token
-    });
+    try {
+      const { userId, token } = await auth.signUp(email, password);
+      res.status(201).send({
+        userId,
+        email,
+        token
+      });
+    } catch (error) {
+      res.status(400).send({
+        error: error.name,
+        message: error.message
+      });
+    }
   } else {
     res.status(400).send({
       error: 'Email and password are required'
@@ -57,9 +64,10 @@ app.post('/sign-in', async (req, res) => {
         email,
         token
       });
-    } catch (err) {
+    } catch (error) {
       res.status(400).send({
-        error: err.message
+        error: error.name,
+        message: error.message
       });
     }
   } else {
@@ -75,15 +83,18 @@ app.post(
   async (req, res) => {
     const { meliUserId, code, redirectUri } = req.body;
     try {
-      const updatedUser = await mercadolibre.addStore(
+      const addedStore = await mercadolibre.addStore(
         req.userId,
         meliUserId,
         code,
         redirectUri
       );
-      res.status(201).send(updatedUser);
+      res.status(201).send(addedStore);
     } catch (error) {
-      res.status(error.response.status).send(error.response.data);
+      res.status(400).send({
+        error: error.name,
+        message: error.message
+      });
     }
   }
 );
@@ -101,12 +112,20 @@ app.get(
 app.put('/inventory', auth.verifyTokenMiddleware, async (req, res) => {
   await auth.channelsSetAuth(req.userId);
   const { sku, quantity } = req.body;
-  const updatedItems = await updateInventory(sku, quantity);
+  const updatedItems = await updateInventory(req.userId, sku, quantity);
   res.json(updatedItems);
 });
 
-app.post('/shopify/product/:userId', async (req, res) => {
-  await auth.channelsSetAuth(req.params.userId);
+app.post('/mercadolibre/notification', (req, res) => {
+  mercadolibre.handleNotification(req.body);
+  res.json({
+    status: 'received',
+    message: 'Check slack notifications channel'
+  });
+});
+
+app.post('/shopify/product', auth.verifyTokenMiddleware, async (req, res) => {
+  await auth.channelsSetAuth(req.userId);
   const createdProduct = await shopify.createProduct(req.body);
   res.json(createdProduct);
 });
@@ -114,7 +133,10 @@ app.post('/shopify/product/:userId', async (req, res) => {
 app.post('/shopify/order-created/:userId', async (req, res) => {
   await auth.channelsSetAuth(req.params.userId);
   const { line_items } = req.body;
-  const orderCreatedResponse = await shopifyOrderCreated(line_items);
+  const orderCreatedResponse = await shopifyOrderCreated(
+    req.params.userId,
+    line_items
+  );
   res.json(orderCreatedResponse);
 });
 
