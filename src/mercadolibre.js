@@ -171,6 +171,16 @@ const handleOrder = async (meliUserId, orderId) => {
   ).api;
   // Get the order details
   const order = await storeApi.getOrder(orderId);
+  const orderDate = new Date(order.date_created);
+  const { data: user } = await database.getUser(storeApi.userId);
+  const lastIntegrationDate = user.last_integration_date.date;
+  if (orderDate < lastIntegrationDate) {
+    return {
+      message: `La orden ${orderId} ocurrió antes de la última integración`,
+      order_created: order.date_created,
+      last_integration_date: user.last_integration_date
+    };
+  }
   let mercadolibreResponse;
   let shopifyResponse;
   if (order.status === 'paid' && order.tags.includes('not_delivered')) {
@@ -203,7 +213,6 @@ const handleOrder = async (meliUserId, orderId) => {
         mercadolibreResponse = handleInventoriesResult;
 
         // Shopify
-        const { data: user } = await database.getUser(storeApi.userId);
         if (user.shopify) {
           shopifyResponse = await Promise.all(
             order.order_items.map(async item => {
