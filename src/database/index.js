@@ -1,5 +1,9 @@
 const faunadb = require('faunadb');
 
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
+
 const {
   Collection,
   Create,

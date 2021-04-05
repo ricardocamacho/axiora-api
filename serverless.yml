@@ -51,7 +51,9 @@ provider:
             - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodb.axioraUsersTable}/index/email-index
 
   environment:
-    #JWT_SECRET_KEY: ${env:JWT_SECRET_KEY}
+    STAGE: ${env:STAGE}
+    JWT_SECRET_KEY: ${env:JWT_SECRET_KEY}
+    FAUNA_SERVER_SECRET: ${env:FAUNA_SERVER_SECRET}
     DYNAMODB_AXIORA_USERS_TABLE: ${self:custom.dynamodb.axioraUsersTable}
 
 functions:

@@ -28,7 +28,7 @@ app.use(
 app.use(bodyParser.json({ strict: false }));
 
 app.get('/', (req, res) => {
-  res.send('Axiora API ' + process.env.NODE_ENV);
+  res.send('Axiora API ' + process.env.STAGE);
 });
 
 app.post('/sign-up', async (req, res) => {
