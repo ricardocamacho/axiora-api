@@ -90,6 +90,29 @@ const adjustInventoryLevelQuantity = async (
   return response.data;
 };
 
+const inventoryBulkAdjustQuantityAtLocation = async inventoryItemAdjustments => {
+  const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
+    query: `mutation inventoryBulkAdjustQuantityAtLocation($inventoryItemAdjustments: [InventoryAdjustItemInput!]!, $locationId: ID!) {
+      inventoryBulkAdjustQuantityAtLocation(inventoryItemAdjustments: $inventoryItemAdjustments, locationId: $locationId) {
+        inventoryLevels {
+          id
+          available
+        }
+        userErrors {
+          field
+          message
+        }
+      }
+    }
+    `,
+    variables: {
+      inventoryItemAdjustments,
+      locationId
+    }
+  });
+  return response.data;
+};
+
 const createProduct = async productInput => {
   const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
     query: `mutation($productInput: ProductInput!) {
@@ -114,6 +137,7 @@ const shopifyApi = {
   getProductsBySku,
   updateInventoryLevels,
   adjustInventoryLevelQuantity,
+  inventoryBulkAdjustQuantityAtLocation,
   createProduct
 };
 

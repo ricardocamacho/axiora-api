@@ -1,5 +1,6 @@
 const database = require('./database');
 const auth = require('./auth');
+const shopify = require('./shopify');
 const mercadolibreApi = require('./api/mercadolibre');
 const slackApi = require('./api/slack');
 
@@ -170,12 +171,14 @@ const handleOrder = async (meliUserId, orderId) => {
   ).api;
   // Get the order details
   const order = await storeApi.getOrder(orderId);
+  let mercadolibreResponse;
+  let shopifyResponse;
   if (order.status === 'paid' && order.tags.includes('not_delivered')) {
     // Order was already added
     try {
       const existingOrder = await database.getOrder(orderId);
       if (existingOrder) {
-        return {
+        mercadolibreResponse = {
           orderId,
           updated: false,
           message: 'La orden ya fue procesada'
@@ -184,6 +187,7 @@ const handleOrder = async (meliUserId, orderId) => {
     } catch (error) {
       // Order does not exists
       if (error.requestResult.statusCode === 404) {
+        // Mercadolibre
         // Logic to update inventory for each store
         const handleInventoriesResult = await Promise.all(
           mercadolibreApi.stores.map(async store => {
@@ -196,17 +200,36 @@ const handleOrder = async (meliUserId, orderId) => {
           channel: 'mercadolibre',
           user_id: order.seller.id
         });
-        return handleInventoriesResult;
+        mercadolibreResponse = handleInventoriesResult;
+
+        // Shopify
+        const { data: user } = await database.getUser(storeApi.userId);
+        if (user.shopify) {
+          shopifyResponse = await Promise.all(
+            order.order_items.map(async item => {
+              const inventoryLevels = await shopify.adjustInventory(
+                item.item.seller_sku,
+                item.quantity
+              );
+              return inventoryLevels.map(inventoryLevel => inventoryLevel.id);
+            })
+          );
+        }
       }
     }
   } else {
-    return {
+    mercadolibreResponse = {
       meliUserId: storeApi.meliUserId,
       orderId: orderId,
       updated: false,
       message: `La orden ${order.id} aun no ha sido pagada o ya fue entregada`
     };
   }
+
+  return {
+    mercadolibre: mercadolibreResponse,
+    shopify: shopifyResponse
+  };
 };
 
 const handleNotification = async notification => {
