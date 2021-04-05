@@ -87,6 +87,25 @@ const updateStore = async (storeId, accessToken, refreshToken) => {
   return result;
 };
 
+const getOrder = async orderId => {
+  const result = await client.query(
+    Get(Match(Index('orders_by_orderid'), orderId))
+  );
+  return result;
+};
+
+const addOrder = async (userId, orderData) => {
+  const result = await client.query(
+    Create(Collection('orders'), {
+      data: {
+        ...orderData,
+        user: Ref(Collection('users'), userId)
+      }
+    })
+  );
+  return result;
+};
+
 const database = {
   createUser,
   getUser,
@@ -94,7 +113,9 @@ const database = {
   getStores,
   getStore,
   addStore,
-  updateStore
+  updateStore,
+  getOrder,
+  addOrder
 };
 
 module.exports = database;

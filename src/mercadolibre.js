@@ -1,6 +1,7 @@
 const database = require('./database');
+const auth = require('./auth');
 const mercadolibreApi = require('./api/mercadolibre');
-const { refreshToken } = require('./api/mercadolibre');
+const slackApi = require('./api/slack');
 
 const addStore = async (userId, meliUserId, code, redirectUri) => {
   const { data: stores } = await database.getStores(userId);
@@ -90,10 +91,146 @@ const updateItemSkuQuantity = async (
   return updatedItem;
 };
 
+const handleInventory = async (storeApi, order) => {
+  const isOrderFromCurrentStore = storeApi.meliUserId === order.seller.id;
+  // Only process items with SKU
+  const items = order.order_items.filter(item => {
+    return item.item.seller_sku;
+  });
+  // Loop over each item in the order
+  const itemsResponses = await Promise.all(
+    items.map(async item => {
+      // Load all the meli items ids (MCO123) sharing this item sku
+      const { results: itemIds } = await storeApi.getItemsBySKU(
+        item.item.seller_sku
+      );
+      if (itemIds.length === 0) {
+        return {
+          updated: false,
+          sku: item.item.seller_sku,
+          message: `No se encontraron items con sku ${item.item.seller_sku}`
+        };
+      }
+      // If it's the only item and it's from the order on the current store,
+      // then don't update this item
+      if (itemIds.length === 1 && isOrderFromCurrentStore) {
+        return {
+          updated: false,
+          sku: item.item.seller_sku,
+          itemId: itemIds[0],
+          message: `Sólo hay un item con sku ${item.item.seller_sku} y es el de esta misma orden y tienda`
+        };
+      }
+      // If itemIds length > 1 and the order is from the current store,
+      // we need to filter out this item so is not updated
+      if (itemIds.length > 1 && isOrderFromCurrentStore) {
+        const indexOfItem = itemIds.indexOf(item.item.id);
+        if (indexOfItem !== -1) {
+          itemIds.splice(indexOfItem, 1);
+        }
+      }
+      console.log('Listados por actualizar', itemIds);
+      const updatedItems = await Promise.all(
+        itemIds.map(async itemId => {
+          try {
+            await updateItemSkuQuantity(
+              storeApi,
+              itemId,
+              item.item.seller_sku,
+              null,
+              item.quantity
+            );
+            return {
+              updated: true,
+              id: itemId,
+              purchasedQuantity: item.quantity
+            };
+          } catch (error) {
+            return error.response.data;
+          }
+        })
+      );
+      return {
+        updated: true,
+        sku: item.item.seller_sku,
+        updatedItems
+      };
+    })
+  );
+  return {
+    meliUserId: storeApi.meliUserId,
+    itemsResponses
+  };
+};
+
+const handleOrder = async (meliUserId, orderId) => {
+  // Get the store api where original order was placed
+  const storeApi = mercadolibreApi.stores.find(
+    store => store.api.meliUserId === meliUserId
+  ).api;
+  // Get the order details
+  const order = await storeApi.getOrder(orderId);
+  if (order.status === 'paid' && order.tags.includes('not_delivered')) {
+    // Order was already added
+    try {
+      const existingOrder = await database.getOrder(orderId);
+      if (existingOrder) {
+        return {
+          orderId,
+          updated: false,
+          message: 'La orden ya fue procesada'
+        };
+      }
+    } catch (error) {
+      // Order does not exists
+      if (error.requestResult.statusCode === 404) {
+        // Logic to update inventory for each store
+        const handleInventoriesResult = await Promise.all(
+          mercadolibreApi.stores.map(async store => {
+            return await handleInventory(store.api, order);
+          })
+        );
+        await database.addOrder(storeApi.userId, {
+          id: orderId,
+          created: order.date_created,
+          channel: 'mercadolibre',
+          user_id: order.seller.id
+        });
+        return handleInventoriesResult;
+      }
+    }
+  } else {
+    return {
+      meliUserId: storeApi.meliUserId,
+      orderId: orderId,
+      updated: false,
+      message: `La orden ${order.id} aun no ha sido pagada o ya fue entregada`
+    };
+  }
+};
+
+const handleNotification = async notification => {
+  const { resource, user_id: meliUserId, topic, attempts } = notification;
+  // Get store based on meli user id
+  const { data: store } = await database.getStore(meliUserId);
+  // Initialize each meli store api
+  await auth.channelsSetAuth(store.user.id);
+  if (topic === 'orders_v2') {
+    const orderId = resource.replace('/orders/', '');
+    const orderResult = await handleOrder(meliUserId, orderId);
+    const response = { meliUserId, resource, topic, attempts, orderResult };
+    await slackApi.sendMessage(
+      '```' + JSON.stringify(response, null, 2) + '```'
+    );
+    return response;
+  }
+};
+
 const mercadolibre = {
   addStore,
   getQuestions,
-  updateItemSkuQuantity
+  updateItemSkuQuantity,
+  handleNotification
 };
 
 module.exports = mercadolibre;

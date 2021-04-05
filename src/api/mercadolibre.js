@@ -128,6 +128,11 @@ class MercadoLibreApi {
     const response = await this.axiosInstance.put(`/items/${itemId}`, item);
     return response.data;
   }
+
+  async getOrder(orderId) {
+    const response = await this.axiosInstance.get(`/orders/${orderId}`);
+    return response.data;
+  }
 }
 
 const axiosInstance = axios.create({
