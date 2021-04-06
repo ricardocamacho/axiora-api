@@ -116,14 +116,6 @@ app.put('/inventory', auth.verifyTokenMiddleware, async (req, res) => {
   res.json(updatedItems);
 });
 
-app.post('/mercadolibre/notification', (req, res) => {
-  mercadolibre.handleNotification(req.body);
-  res.json({
-    status: 'received',
-    message: 'Check slack notifications channel'
-  });
-});
-
 app.post('/shopify/product', auth.verifyTokenMiddleware, async (req, res) => {
   await auth.channelsSetAuth(req.userId);
   const createdProduct = await shopify.createProduct(req.body);

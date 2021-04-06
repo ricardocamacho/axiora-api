@@ -10,6 +10,7 @@ const CLIENT_SECRET = 'O4S9ubYIVvH1EAB4wlz4BZTTPnvm1nO4';
 const stores = [];
 
 const setStores = (meliStores, user) => {
+  stores.length = 0;
   meliStores.forEach(store => {
     store.api = new MercadoLibreApi(
       store.access_token,
