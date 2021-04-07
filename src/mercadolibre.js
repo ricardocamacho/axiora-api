@@ -243,11 +243,11 @@ const handleOrder = async (meliUserId, orderId) => {
 
 const handleNotification = async notification => {
   const { resource, user_id: meliUserId, topic, attempts } = notification;
-  // Get store based on meli user id
-  const { data: store } = await database.getStore(meliUserId);
-  // Initialize each meli store api
-  await auth.channelsSetAuth(store.user.id);
   if (topic === 'orders_v2') {
+    // Get store based on meli user id
+    const { data: store } = await database.getStore(meliUserId);
+    // Initialize each meli store api
+    await auth.channelsSetAuth(store.user.id);
     const orderId = resource.replace('/orders/', '');
     const orderResult = await handleOrder(meliUserId, orderId);
     const response = { meliUserId, resource, topic, attempts, orderResult };
