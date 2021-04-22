@@ -124,11 +124,11 @@ app.post('/shopify/product', auth.verifyTokenMiddleware, async (req, res) => {
 
 app.post('/shopify/order-created/:userId', async (req, res) => {
   await auth.channelsSetAuth(req.params.userId);
-  const { line_items } = req.body;
   const orderCreatedResponse = await shopifyOrderCreated(
     req.params.userId,
-    line_items
+    req.body
   );
+  console.log('Shopify order created', orderCreatedResponse);
   res.json(orderCreatedResponse);
 });
 

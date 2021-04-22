@@ -3,6 +3,7 @@
 const database = require('../database');
 const mercadolibreApi = require('../api/mercadolibre');
 const shopifyApi = require('../api/shopify');
+const slackApi = require('../api/slack');
 const mercadolibre = require('../mercadolibre');
 
 const adjustInventoryBySkuMercadolibre = async (
@@ -93,11 +94,12 @@ const adjustInventoryBySkuShopify = async (
   return inventoryLevelsIdsUpdated;
 };
 
-const orderCreated = async orderItems => {
+const orderCreated = async (userId, order) => {
   const adjustedInventories = {
     mercadolibre: null,
     shopify: null
   };
+  const { line_items: orderItems } = order;
   // MercadoLibre
   adjustedInventories.mercadolibre = await Promise.all(
     mercadolibreApi.stores.map(async store => {
@@ -129,6 +131,20 @@ const orderCreated = async orderItems => {
       })
     );
   }
+  const slackMessage = {
+    channel: 'shopify',
+    order: {
+      id: order.id,
+      number: order.number,
+      items: orderItems.map(item => ({
+        sku: item.sku,
+        quantity: item.quantity
+      }))
+    }
+  };
+  await slackApi.sendMessage(
+    '```' + JSON.stringify(slackMessage, null, 2) + '```'
+  );
   return adjustedInventories;
 };
 
