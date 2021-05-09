@@ -48,7 +48,11 @@ const signIn = async (email, password) => {
   };
 };
 
-const channelsSetAuth = async email => {
+const channelsSetAuth = async (email, shopifyUuid) => {
+  if (!email) {
+    const store = await database.getStore(shopifyUuid);
+    email = store.PK.replace('USER#', '');
+  }
   const stores = await database.getStores(email);
   const mercadolibreStores = stores
     .filter(store => store.channel === 'mercadolibre')
@@ -60,6 +64,7 @@ const channelsSetAuth = async email => {
     shopifyApi.setToken(shopifyStore.data.access_token);
     shopifyApi.setLocationId(shopifyStore.data.location_id);
   }
+  return email;
 };
 
 module.exports = {

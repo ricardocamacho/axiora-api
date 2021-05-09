@@ -123,12 +123,9 @@ app.post('/shopify/product', auth.verifyTokenMiddleware, async (req, res) => {
   res.json(createdProduct);
 });
 
-app.post('/shopify/order-created/:email', async (req, res) => {
-  await auth.channelsSetAuth(req.params.email);
-  const orderCreatedResponse = await shopifyOrderCreated(
-    req.params.email,
-    req.body
-  );
+app.post('/shopify/order-created/:shopifyUuid', async (req, res) => {
+  const email = await auth.channelsSetAuth(null, req.params.shopifyUuid);
+  const orderCreatedResponse = await shopifyOrderCreated(email, req.body);
   console.log('Shopify order created', orderCreatedResponse);
   res.json(orderCreatedResponse);
 });
