@@ -80,7 +80,7 @@ const updateInventoryShopify = async (sku, quantity) => {
   return updatedIventoryLevels;
 };
 
-const updateInventory = async (userId, sku, quantity) => {
+const updateInventory = async (email, sku, quantity) => {
   const updatedInventories = {
     mercadolibre: null,
     shopify: null
@@ -100,8 +100,9 @@ const updateInventory = async (userId, sku, quantity) => {
   );
 
   // Shopify
-  const { data: user } = await database.getUser(userId);
-  if (user.shopify) {
+  const stores = await database.getStores(email);
+  const shopifyStore = stores.find(store => store.channel === 'shopify');
+  if (shopifyStore) {
     console.log('Update inventory for Shopify');
     const shopifyUpdatedInventories = await updateInventoryShopify(
       sku,

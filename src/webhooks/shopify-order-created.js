@@ -94,7 +94,7 @@ const adjustInventoryBySkuShopify = async (
   return inventoryLevelsIdsUpdated;
 };
 
-const orderCreated = async (userId, order) => {
+const orderCreated = async (email, order) => {
   const adjustedInventories = {
     mercadolibre: null,
     shopify: null
@@ -117,8 +117,9 @@ const orderCreated = async (userId, order) => {
     })
   );
 
-  const { data: user } = await database.getUser(userId);
-  if (user.shopify) {
+  const stores = await database.getStores(email);
+  const shopifyStore = stores.find(store => store.channel === 'shopify');
+  if (shopifyStore) {
     // Shopify (adjust all SKU inventories except the one being purchased)
     adjustedInventories.shopify = await Promise.all(
       orderItems.map(async item => {

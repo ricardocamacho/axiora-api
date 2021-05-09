@@ -35,10 +35,10 @@ app.post('/sign-up', async (req, res) => {
   const { email, password } = req.body;
   if (email && password) {
     try {
-      const { userId, token } = await auth.signUp(email, password);
+      const { created_at, token } = await auth.signUp(email, password);
       res.status(201).send({
-        userId,
         email,
+        created_at,
         token
       });
     } catch (error) {
@@ -58,9 +58,8 @@ app.post('/sign-in', async (req, res) => {
   const { email, password } = req.body;
   if (email && password) {
     try {
-      const { userId, token } = await auth.signIn(email, password);
+      const { token } = await auth.signIn(email, password);
       res.status(200).send({
-        userId,
         email,
         token
       });
@@ -83,13 +82,15 @@ app.post(
   async (req, res) => {
     const { meliUserId, code, redirectUri } = req.body;
     try {
-      const addedStore = await mercadolibre.addStore(
-        req.userId,
+      const created = await mercadolibre.addStore(
+        req.email,
         meliUserId,
         code,
         redirectUri
       );
-      res.status(201).send(addedStore);
+      res.status(201).send({
+        created
+      });
     } catch (error) {
       res.status(400).send({
         error: error.name,
@@ -103,29 +104,29 @@ app.get(
   '/mercadolibre/questions',
   auth.verifyTokenMiddleware,
   async (req, res) => {
-    await auth.channelsSetAuth(req.userId);
+    await auth.channelsSetAuth(req.email);
     const questions = await mercadolibre.getQuestions();
     res.status(200).send(questions);
   }
 );
 
 app.put('/inventory', auth.verifyTokenMiddleware, async (req, res) => {
-  await auth.channelsSetAuth(req.userId);
+  await auth.channelsSetAuth(req.email);
   const { sku, quantity } = req.body;
-  const updatedItems = await updateInventory(req.userId, sku, quantity);
+  const updatedItems = await updateInventory(req.email, sku, quantity);
   res.json(updatedItems);
 });
 
 app.post('/shopify/product', auth.verifyTokenMiddleware, async (req, res) => {
-  await auth.channelsSetAuth(req.userId);
+  await auth.channelsSetAuth(req.email);
   const createdProduct = await shopify.createProduct(req.body);
   res.json(createdProduct);
 });
 
-app.post('/shopify/order-created/:userId', async (req, res) => {
-  await auth.channelsSetAuth(req.params.userId);
+app.post('/shopify/order-created/:email', async (req, res) => {
+  await auth.channelsSetAuth(req.params.email);
   const orderCreatedResponse = await shopifyOrderCreated(
-    req.params.userId,
+    req.params.email,
     req.body
   );
   console.log('Shopify order created', orderCreatedResponse);
