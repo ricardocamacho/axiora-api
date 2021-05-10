@@ -9,21 +9,20 @@ const CLIENT_SECRET = 'O4S9ubYIVvH1EAB4wlz4BZTTPnvm1nO4';
 
 const stores = [];
 
-const setStores = (meliStores, user) => {
+const setStores = meliStores => {
   stores.length = 0;
   meliStores.forEach(store => {
     store.api = new MercadoLibreApi(
       store.access_token,
       store.refresh_token,
-      store.user_id,
-      user
+      store.user_id
     );
     stores.push(store);
   });
 };
 
 class MercadoLibreApi {
-  constructor(accessToken, refreshTokenValue, meliUserId, userId) {
+  constructor(accessToken, refreshTokenValue, meliUserId) {
     this.axiosInstance = axios.create({
       baseURL: 'https://api.mercadolibre.com',
       headers: {
@@ -32,7 +31,6 @@ class MercadoLibreApi {
     });
     this.refreshTokenValue = refreshTokenValue;
     this.meliUserId = meliUserId;
-    this.userId = userId;
     this.setToken(accessToken);
     this.setExpiredTokenInterceptor();
   }
@@ -53,10 +51,10 @@ class MercadoLibreApi {
           this.setToken(access_token);
           this.setRefreshToken(refresh_token);
           // Find store in database and update it with new tokens
-          const {
-            ref: { id: storeId }
-          } = await database.getStore(this.meliUserId);
-          await database.updateStore(storeId, access_token, refresh_token);
+          const store = await database.getStore(this.meliUserId);
+          store.data.access_token = access_token;
+          store.data.refresh_token = refresh_token;
+          await database.updateStore(store.PK, this.meliUserId, store.data);
           // Try the original request with the new token
           originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
           return this.axiosInstance.request(originalRequest);

@@ -4,10 +4,10 @@ const shopify = require('./shopify');
 const mercadolibreApi = require('./api/mercadolibre');
 const slackApi = require('./api/slack');
 
-const addStore = async (userId, meliUserId, code, redirectUri) => {
-  const { data: stores } = await database.getStores(userId);
+const addStore = async (email, meliUserId, code, redirectUri) => {
+  const stores = await database.getStores(email);
   const isAlreadyAdded = stores.find(
-    store => store.data.user_id === meliUserId
+    store => store.SK === `STORE#${meliUserId}`
   );
   if (isAlreadyAdded) {
     throw Error('Store is already added');
@@ -16,15 +16,12 @@ const addStore = async (userId, meliUserId, code, redirectUri) => {
     code,
     redirectUri
   );
-  const addedStore = await database.addStore(userId, {
-    channel: 'mercadolibre',
+  const created = await database.addStore(email, 'mercadolibre', meliUserId, {
     user_id: meliUserId,
-    access_token,
-    refresh_token
+    access_token: access_token,
+    refresh_token: refresh_token
   });
-  return {
-    id: addedStore.ref.id
-  };
+  return created;
 };
 
 const getStoreQuestions = async store => {
@@ -164,7 +161,7 @@ const handleInventory = async (storeApi, order) => {
   };
 };
 
-const handleOrder = async (meliUserId, orderId) => {
+const handleOrder = async (email, meliUserId, orderId) => {
   // Get the store api where original order was placed
   const storeApi = mercadolibreApi.stores.find(
     store => store.api.meliUserId === meliUserId
@@ -172,8 +169,8 @@ const handleOrder = async (meliUserId, orderId) => {
   // Get the order details
   const order = await storeApi.getOrder(orderId);
   const orderDate = new Date(order.date_created);
-  const { data: user } = await database.getUser(storeApi.userId);
-  const lastIntegrationDate = user.last_integration_date.date;
+  const user = await database.getUser(email);
+  const lastIntegrationDate = new Date(user.last_integration_date);
   if (orderDate < lastIntegrationDate) {
     return {
       message: `La orden ${orderId} ocurrió antes de la última integración`,
@@ -186,7 +183,7 @@ const handleOrder = async (meliUserId, orderId) => {
   if (order.status === 'paid' && order.tags.includes('not_delivered')) {
     // Order was already added
     try {
-      const existingOrder = await database.getOrder(orderId);
+      const existingOrder = await database.getOrder(meliUserId, orderId);
       if (existingOrder) {
         mercadolibreResponse = {
           orderId,
@@ -196,34 +193,34 @@ const handleOrder = async (meliUserId, orderId) => {
       }
     } catch (error) {
       // Order does not exists
-      if (error.requestResult.statusCode === 404) {
-        // Mercadolibre
-        // Logic to update inventory for each store
-        const handleInventoriesResult = await Promise.all(
-          mercadolibreApi.stores.map(async store => {
-            return await handleInventory(store.api, order);
+
+      // Mercadolibre
+      // Logic to update inventory for each store
+      const handleInventoriesResult = await Promise.all(
+        mercadolibreApi.stores.map(async store => {
+          return await handleInventory(store.api, order);
+        })
+      );
+      await database.addOrder(
+        meliUserId,
+        orderId,
+        'mercadolibre',
+        order.date_created
+      );
+      mercadolibreResponse = handleInventoriesResult;
+
+      const stores = await database.getStores(email);
+      const shopifyStore = stores.find(store => store.channel === 'shopify');
+      if (shopifyStore) {
+        shopifyResponse = await Promise.all(
+          order.order_items.map(async item => {
+            const inventoryLevels = await shopify.adjustInventory(
+              item.item.seller_sku,
+              item.quantity
+            );
+            return inventoryLevels.map(inventoryLevel => inventoryLevel.id);
           })
         );
-        await database.addOrder(storeApi.userId, {
-          id: orderId,
-          created: order.date_created,
-          channel: 'mercadolibre',
-          user_id: order.seller.id
-        });
-        mercadolibreResponse = handleInventoriesResult;
-
-        // Shopify
-        if (user.shopify) {
-          shopifyResponse = await Promise.all(
-            order.order_items.map(async item => {
-              const inventoryLevels = await shopify.adjustInventory(
-                item.item.seller_sku,
-                item.quantity
-              );
-              return inventoryLevels.map(inventoryLevel => inventoryLevel.id);
-            })
-          );
-        }
       }
     }
   } else {
@@ -245,11 +242,12 @@ const handleNotification = async notification => {
   const { resource, user_id: meliUserId, topic, attempts } = notification;
   if (topic === 'orders_v2') {
     // Get store based on meli user id
-    const { data: store } = await database.getStore(meliUserId);
+    const store = await database.getStore(meliUserId);
     // Initialize each meli store api
-    await auth.channelsSetAuth(store.user.id);
+    const email = store.PK.replace('USER#', '');
+    await auth.channelsSetAuth(email);
     const orderId = resource.replace('/orders/', '');
-    const orderResult = await handleOrder(meliUserId, orderId);
+    const orderResult = await handleOrder(email, meliUserId, orderId);
     const response = { meliUserId, resource, topic, attempts, orderResult };
     await slackApi.sendMessage(
       '```' + JSON.stringify(response, null, 2) + '```'

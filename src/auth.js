@@ -17,7 +17,7 @@ const verifyTokenMiddleware = async (req, res, next) => {
   token = token.split('Bearer ')[1];
   try {
     const decoded = await jwt.verify(token, process.env.JWT_SECRET_KEY);
-    req.userId = decoded.userId;
+    req.email = decoded.email;
     next();
   } catch (err) {
     return res.status(401).send({ error: 'Token is invalid' });
@@ -26,47 +26,45 @@ const verifyTokenMiddleware = async (req, res, next) => {
 
 const signUp = async (email, password) => {
   const hash = await bcrypt.hash(password, 10);
-  const {
-    ref: { id: userId }
-  } = await database.createUser(email, hash);
-  const token = jwt.sign({ userId, email }, process.env.JWT_SECRET_KEY);
+  const { created_at } = await database.createUser(email, hash);
+  const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY);
   return {
-    userId,
+    email,
+    created_at,
     token
   };
 };
 
 const signIn = async (email, password) => {
-  const {
-    data: { password: userPassword },
-    ref: { id: userId }
-  } = await database.getUserByEmail(email);
-  if (!userId) {
-    throw Error('User not found');
-  }
-  const compareResult = await bcrypt.compare(password, userPassword);
+  const { hash } = await database.getUser(email);
+  const compareResult = await bcrypt.compare(password, hash);
   if (!compareResult) {
     throw Error('Email and password does not match');
   }
-  const token = jwt.sign({ userId, email }, process.env.JWT_SECRET_KEY);
+  const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY);
   return {
-    userId,
+    email,
     token
   };
 };
 
-const channelsSetAuth = async userId => {
-  const { data: stores } = await database.getStores(userId);
-  const mercadolibreStores = stores
-    .filter(store => store.data.channel === 'mercadolibre')
-    .map(store => store.data);
-  mercadolibreApi.setStores(mercadolibreStores, userId);
-  const { data: user } = await database.getUser(userId);
-  if (user.shopify) {
-    shopifyApi.createAxiosInstance(user.shopify.base_url);
-    shopifyApi.setToken(user.shopify.access_token);
-    shopifyApi.setLocationId(user.shopify.location_id);
+const channelsSetAuth = async (email, shopifyUuid) => {
+  if (!email) {
+    const store = await database.getStore(shopifyUuid);
+    email = store.PK.replace('USER#', '');
   }
+  const stores = await database.getStores(email);
+  const mercadolibreStores = stores
+    .filter(store => store.channel === 'mercadolibre')
+    .map(store => store.data);
+  mercadolibreApi.setStores(mercadolibreStores);
+  const shopifyStore = stores.find(store => store.channel === 'shopify');
+  if (shopifyStore) {
+    shopifyApi.createAxiosInstance(shopifyStore.data.base_url);
+    shopifyApi.setToken(shopifyStore.data.access_token);
+    shopifyApi.setLocationId(shopifyStore.data.location_id);
+  }
+  return email;
 };
 
 module.exports = {
