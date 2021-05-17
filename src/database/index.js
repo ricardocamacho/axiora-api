@@ -58,7 +58,8 @@ const getStores = async email => {
     }
   };
   const { Items: items, Count: count } = await dynamoDb.query(params).promise();
-  return items;
+  const activeStores = items.filter(item => item.status === 'ACTIVE');
+  return activeStores;
 };
 
 const getStore = async channelAccountId => {
