@@ -10,6 +10,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 const auth = require('./src/auth');
+const axiora = require('./src/axiora');
 const mercadolibre = require('./src/mercadolibre');
 const shopify = require('./src/shopify');
 const updateInventory = require('./src/update-inventory');
@@ -74,6 +75,11 @@ app.post('/sign-in', async (req, res) => {
       error: 'Email and password are required'
     });
   }
+});
+
+app.get('/stores', auth.verifyTokenMiddleware, async (req, res) => {
+  const stores = await axiora.getStores(req.email);
+  res.status(200).send(stores);
 });
 
 app.post(
