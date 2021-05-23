@@ -4,8 +4,12 @@ const axios = require('axios');
 
 const database = require('../database');
 
-const CLIENT_ID = '7979460756315625';
-const CLIENT_SECRET = 'O4S9ubYIVvH1EAB4wlz4BZTTPnvm1nO4';
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
+
+const CLIENT_ID = process.env.MELI_CLIENT_ID;
+const CLIENT_SECRET = process.env.MELI_CLIENT_SECRET;
 
 const stores = [];
 
@@ -93,6 +97,11 @@ class MercadoLibreApi {
         }
       }
     );
+    return response.data;
+  }
+
+  async getUser() {
+    const response = await this.axiosInstance.get('/users/me');
     return response.data;
   }
 

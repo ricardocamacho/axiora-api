@@ -78,6 +78,7 @@ app.post('/sign-in', async (req, res) => {
 });
 
 app.get('/stores', auth.verifyTokenMiddleware, async (req, res) => {
+  await auth.channelsSetAuth(req.email);
   const stores = await axiora.getStores(req.email);
   res.status(200).send(stores);
 });

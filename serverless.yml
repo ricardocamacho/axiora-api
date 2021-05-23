@@ -52,6 +52,8 @@ provider:
   environment:
     STAGE: ${env:STAGE}
     JWT_SECRET_KEY: ${env:JWT_SECRET_KEY}
+    MELI_CLIENT_ID: ${env:MELI_CLIENT_ID}
+    MELI_CLIENT_SECRET: ${env:MELI_CLIENT_SECRET}
     DYNAMODB_AXIORA_TABLE: ${self:custom.dynamodb.axioraTable}
 
 functions:

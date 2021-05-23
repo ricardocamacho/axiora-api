@@ -79,13 +79,16 @@ const getStore = async channelAccountId => {
 };
 
 const addStore = async (email, channel, channelAccountId, storeData) => {
+  const created_at = new Date().toISOString();
   const params = {
     TableName: AXIORA_TABLE,
     Item: {
       PK: `USER#${email}`,
       SK: `STORE#${channelAccountId}`,
       channel,
-      data: storeData
+      data: storeData,
+      status: 'ACTIVE',
+      created_at
     },
     ConditionExpression: 'PK <> :email AND SK <> :store',
     ExpressionAttributeValues: {
