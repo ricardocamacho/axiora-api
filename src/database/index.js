@@ -48,6 +48,20 @@ const createUser = async (email, hash) => {
   };
 };
 
+const updateUserLastIntegrationDate = async (email, lastIntegrationDate) => {
+  const params = {
+    TableName: AXIORA_TABLE,
+    Key: { PK: `USER#${email}`, SK: 'PROFILE' },
+    UpdateExpression: 'set last_integration_date = :last_integration_date',
+    ExpressionAttributeValues: {
+      ':last_integration_date': lastIntegrationDate
+    },
+    ReturnValues: 'UPDATED_NEW'
+  };
+  const updated = await dynamoDb.update(params).promise();
+  return updated;
+};
+
 const getStores = async email => {
   const params = {
     TableName: AXIORA_TABLE,
@@ -98,7 +112,7 @@ const addStore = async (email, channel, channelAccountId, storeData) => {
     ReturnValues: 'ALL_OLD'
   };
   await dynamoDb.put(params).promise();
-  return true;
+  return { created_at };
 };
 
 const updateStore = async (PK, channelAccountId, storeData) => {
@@ -155,6 +169,7 @@ const addOrder = async (channelAccountId, orderId, channel, created) => {
 const database = {
   createUser,
   getUser,
+  updateUserLastIntegrationDate,
   getStores,
   getStore,
   addStore,

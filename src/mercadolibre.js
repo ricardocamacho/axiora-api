@@ -18,9 +18,10 @@ const addStore = async (email, meliUserId, code, redirectUri) => {
   );
   const created = await database.addStore(email, 'mercadolibre', meliUserId, {
     user_id: meliUserId,
-    access_token: access_token,
-    refresh_token: refresh_token
+    access_token,
+    refresh_token
   });
+  await database.updateUserLastIntegrationDate(email, created.created_at);
   return created;
 };
 

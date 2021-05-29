@@ -97,9 +97,7 @@ app.post(
         code,
         redirectUri
       );
-      res.status(201).send({
-        created
-      });
+      res.status(201).send(created);
     } catch (error) {
       res.status(400).send({
         error: error.name,
