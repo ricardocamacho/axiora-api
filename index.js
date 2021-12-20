@@ -21,8 +21,8 @@ const app = express();
 app.use(
   cors({
     origin: [
-      'https://axiora.co',
       'https://dev.axiora.co',
+      'https://axiora.co',
       'http://mercadolibre-gogo.s3-website.us-east-2.amazonaws.com',
       'http://localhost:3000'
     ]

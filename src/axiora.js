@@ -9,8 +9,12 @@ const getStores = async email => {
         const meliStore = mercadolibreApi.stores.find(
           meliStore => meliStore.user_id === store.data.user_id
         );
-        const meliStoreData = await meliStore.api.getUser();
-        store.data.name = meliStoreData.nickname;
+        try {
+          const meliStoreData = await meliStore.api.getUser();
+          store.data.name = meliStoreData.nickname;
+        } catch (error) {
+          store.data.name = `Cuenta bloqueada: ${meliStore.user_id}`;
+        }
       }
     })
   );
