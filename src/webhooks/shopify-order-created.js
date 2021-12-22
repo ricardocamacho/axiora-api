@@ -103,16 +103,15 @@ const orderCreated = async (email, order) => {
   // MercadoLibre
   adjustedInventories.mercadolibre = await Promise.all(
     mercadolibreApi.stores.map(async store => {
-      const adjustedInventoryMercadolibre = await Promise.all(
-        orderItems.map(async item => {
-          const adjustedItems = await adjustInventoryBySkuMercadolibre(
-            store.api,
-            item.sku,
-            item.quantity
-          );
-          return { sku: item.sku, adjustedItems };
-        })
-      );
+      const adjustedInventoryMercadolibre = [];
+      for (const item of orderItems) {
+        const adjustedItems = await adjustInventoryBySkuMercadolibre(
+          store.api,
+          item.sku,
+          item.quantity
+        );
+        adjustedInventoryMercadolibre.push({ sku: item.sku, adjustedItems });
+      }
       return adjustedInventoryMercadolibre;
     })
   );
