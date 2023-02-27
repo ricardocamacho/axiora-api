@@ -34,6 +34,10 @@ app.get('/', (req, res) => {
   res.send('Axiora API ' + process.env.STAGE);
 });
 
+app.post('/', (req, res) => {
+  res.send('Axiora API POST req, env ' + process.env.STAGE);
+});
+
 app.post('/sign-up', async (req, res) => {
   const { email, password } = req.body;
   if (email && password) {
