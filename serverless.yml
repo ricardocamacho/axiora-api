@@ -72,12 +72,16 @@ functions:
     events:
       - http: ANY /
       - http: 'ANY /{proxy+}'
+    memorySize: 512
   receiveNotification:
     handler: receive-notification.handler
+    memorySize: 128
   publishNotification:
     handler: publish-notification.handler
+    memorySize: 128
   processNotification:
     handler: process-notification.handler
+    memorySize: 512
     events:
       - sns:
           arn: !Ref processNotification
