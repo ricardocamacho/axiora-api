@@ -240,7 +240,7 @@ const handleOrder = async (email, meliUserId, orderId) => {
 };
 
 const handleNotification = async notification => {
-  const { resource, user_id: meliUserId, topic, attempts } = notification;
+  const { resource, user_id: meliUserId, topic } = notification;
   if (topic === 'orders_v2') {
     // Get store based on meli user id
     try {
@@ -250,13 +250,15 @@ const handleNotification = async notification => {
       await auth.channelsSetAuth(email);
       const orderId = resource.replace('/orders/', '');
       const orderResult = await handleOrder(email, meliUserId, orderId);
-      const response = { meliUserId, resource, topic, attempts, orderResult };
+      const response = { ...notification, orderResult };
       await slackApi.sendMessage(
         '```' + JSON.stringify(response, null, 2) + '```'
       );
     } catch (error) {
       console.log(error);
     }
+  } else {
+    console.log('Not an order notification');
   }
 };
 

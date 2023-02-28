@@ -27,6 +27,8 @@ custom:
   #   httpPort: 8080
   serviceStage: ${self:service}-${opt:stage}
   dynamodbAxioraTable: ${self:custom.serviceStage}
+  notificationReceiverLambda: ${self:custom.serviceStage}-receiveNotification
+  notificationPublisherLambda: ${self:custom.serviceStage}-publishNotification
   snsTopicName: ${self:custom.serviceStage}-processNotification
 
 provider:
@@ -72,21 +74,40 @@ functions:
       - http: 'ANY /{proxy+}'
   receiveNotification:
     handler: receive-notification.handler
-    events:
-      - http:
-          path: notification/{channel}
-          method: post
-          cors: true
-          request:
-            parameters:
-              paths:
-                channel: true
+  publishNotification:
+    handler: publish-notification.handler
   processNotification:
     handler: process-notification.handler
     events:
       - sns:
           arn: !Ref processNotification
           topicName: ${self:custom.snsTopicName}
+
+stepFunctions:
+  stateMachines:
+    notificationStepFunction:
+      events:
+        - http:
+            path: notification/{channel}
+            method: post
+            cors: true
+            request:
+              template: lambda_proxy
+              parameters:
+                paths:
+                  channel: true
+      definition:
+        Comment: 'Notification step function'
+        StartAt: ReceiveNotification
+        States:
+          ReceiveNotification:
+            Type: Task
+            Resource: 'arn:aws:lambda:us-east-2:571994632048:function:${self:custom.notificationReceiverLambda}'
+            Next: PublishNotification
+          PublishNotification:
+            Type: Task
+            Resource: 'arn:aws:lambda:us-east-2:571994632048:function:${self:custom.notificationPublisherLambda}'
+            End: true
 
 resources:
   Resources:
@@ -119,5 +140,6 @@ resources:
       Properties:
         TopicName: ${self:custom.snsTopicName}
 
-# plugins:
+plugins:
+  - serverless-step-functions
 #   - serverless-offline
