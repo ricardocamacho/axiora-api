@@ -18,21 +18,23 @@ org: ricardocamacho21
 
 # You can pin your service to only deploy with a specific Serverless version
 # Check out our docs for more details
-frameworkVersion: '2'
+frameworkVersion: '3'
 useDotenv: true
 
 custom:
-  serverless-offline:
-    noPrependStageInUrl: true
-    httpPort: 8080
-  dynamodb:
-    axioraTable: ${self:service}-${opt:stage}
+  # serverless-offline:
+  #   noPrependStageInUrl: true
+  #   httpPort: 8080
+  serviceStage: ${self:service}-${opt:stage}
+  dynamodbAxioraTable: ${self:custom.serviceStage}
+  notificationReceiverLambda: ${self:custom.serviceStage}-receiveNotification
+  notificationPublisherLambda: ${self:custom.serviceStage}-publishNotification
+  snsTopicName: ${self:custom.serviceStage}-processNotification
 
 provider:
   name: aws
   runtime: nodejs16.x
   region: us-east-2
-  lambdaHashingVersion: 20201221
   apiGateway:
     shouldStartNameWithService: true
 
@@ -41,20 +43,28 @@ provider:
       statements:
         - Effect: 'Allow'
           Action:
+            - 'sns:*'
+          Resource:
+            - arn:aws:sns:us-east-2:571994632048:${self:custom.snsTopicName}
+        - Effect: 'Allow'
+          Action:
             - 'dynamodb:Query'
             - 'dynamodb:GetItem'
             - 'dynamodb:PutItem'
             - 'dynamodb:UpdateItem'
           Resource:
-            - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodb.axioraTable}
-            - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodb.axioraTable}/index/SK-PK-index
+            - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodbAxioraTable}
+            - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodbAxioraTable}/index/SK-PK-index
 
   environment:
+    AWS_ACCOUNT_ID: 571994632048
+    AWS_ACCOUNT_REGION: us-east-2
+    DYNAMODB_AXIORA_TABLE: ${self:custom.dynamodbAxioraTable}
+    SNS_TOPIC_NAME: ${self:custom.snsTopicName}
     STAGE: ${env:STAGE}
     JWT_SECRET_KEY: ${env:JWT_SECRET_KEY}
     MELI_CLIENT_ID: ${env:MELI_CLIENT_ID}
     MELI_CLIENT_SECRET: ${env:MELI_CLIENT_SECRET}
-    DYNAMODB_AXIORA_TABLE: ${self:custom.dynamodb.axioraTable}
 
 functions:
   app:
@@ -62,10 +72,20 @@ functions:
     events:
       - http: ANY /
       - http: 'ANY /{proxy+}'
+    memorySize: 512
   receiveNotification:
-    handler: notification.handler
+    handler: receive-notification.handler
+    memorySize: 128
+  publishNotification:
+    handler: publish-notification.handler
+    memorySize: 128
   processNotification:
     handler: process-notification.handler
+    memorySize: 512
+    events:
+      - sns:
+          arn: !Ref processNotification
+          topicName: ${self:custom.snsTopicName}
 
 stepFunctions:
   stateMachines:
@@ -74,6 +94,7 @@ stepFunctions:
         - http:
             path: notification/{channel}
             method: post
+            cors: true
             request:
               template: lambda_proxy
               parameters:
@@ -85,11 +106,11 @@ stepFunctions:
         States:
           ReceiveNotification:
             Type: Task
-            Resource: 'arn:aws:lambda:us-east-2:571994632048:function:${self:service}-${opt:stage}-receiveNotification'
-            Next: ProcessNotification
-          ProcessNotification:
+            Resource: 'arn:aws:lambda:us-east-2:571994632048:function:${self:custom.notificationReceiverLambda}'
+            Next: PublishNotification
+          PublishNotification:
             Type: Task
-            Resource: 'arn:aws:lambda:us-east-2:571994632048:function:${self:service}-${opt:stage}-processNotification'
+            Resource: 'arn:aws:lambda:us-east-2:571994632048:function:${self:custom.notificationPublisherLambda}'
             End: true
 
 resources:
@@ -97,7 +118,7 @@ resources:
     axioraTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:custom.dynamodb.axioraTable}
+        TableName: ${self:custom.dynamodbAxioraTable}
         AttributeDefinitions:
           - AttributeName: PK
             AttributeType: S
@@ -118,7 +139,11 @@ resources:
             Projection:
               ProjectionType: 'ALL'
         BillingMode: PAY_PER_REQUEST
+    processNotification:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:custom.snsTopicName}
 
 plugins:
-  - serverless-offline
   - serverless-step-functions
+#   - serverless-offline

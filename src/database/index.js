@@ -1,11 +1,15 @@
-const AWS = require('aws-sdk');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
 
-const AXIORA_TABLE = process.env.DYNAMODB_AXIORA_TABLE;
-const dynamoDb = new AWS.DynamoDB.DocumentClient();
+const { AWS_ACCOUNT_REGION, DYNAMODB_AXIORA_TABLE: AXIORA_TABLE } = process.env;
+
+const dynamoDbClient = new DynamoDBClient({ region: AWS_ACCOUNT_REGION });
+
+const dynamoDb = DynamoDBDocumentClient.from(dynamoDbClient);
 
 const getUser = async email => {
   const params = {
@@ -16,7 +20,7 @@ const getUser = async email => {
       ':profile': 'PROFILE'
     }
   };
-  const { Items: items, Count: count } = await dynamoDb.query(params).promise();
+  const { Items: items, Count: count } = await dynamoDb.send(new QueryCommand(params));
   if (count === 0) {
     throw Error('User not found');
   }
@@ -41,7 +45,7 @@ const createUser = async (email, hash) => {
     },
     ReturnValues: 'ALL_OLD'
   };
-  await dynamoDb.put(params).promise();
+  await dynamoDb.send(new PutCommand(params));
   return {
     email,
     created_at
@@ -58,7 +62,7 @@ const updateUserLastIntegrationDate = async (email, lastIntegrationDate) => {
     },
     ReturnValues: 'UPDATED_NEW'
   };
-  const updated = await dynamoDb.update(params).promise();
+  const updated = await dynamoDb.send(new UpdateCommand(params));
   return updated;
 };
 
@@ -71,7 +75,7 @@ const getStores = async email => {
       ':beginsWith': 'STORE#'
     }
   };
-  const { Items: items, Count: count } = await dynamoDb.query(params).promise();
+  const { Items: items } = await dynamoDb.send(new QueryCommand(params));
   const activeStores = items.filter(item => item.status === 'ACTIVE');
   return activeStores;
 };
@@ -85,7 +89,7 @@ const getStore = async channelAccountId => {
       ':store': `STORE#${channelAccountId}`
     }
   };
-  const { Items: items, Count: count } = await dynamoDb.query(params).promise();
+  const { Items: items, Count: count } = await dynamoDb.send(new QueryCommand(params));
   if (count === 0) {
     throw Error('Store does not exist');
   }
@@ -111,7 +115,7 @@ const addStore = async (email, channel, channelAccountId, storeData) => {
     },
     ReturnValues: 'ALL_OLD'
   };
-  await dynamoDb.put(params).promise();
+  await dynamoDb.send(new PutCommand(params));
   return { created_at };
 };
 
@@ -126,7 +130,7 @@ const updateStore = async (PK, channelAccountId, storeData) => {
     },
     ReturnValues: 'UPDATED_NEW'
   };
-  const updated = await dynamoDb.update(params).promise();
+  const updated = await dynamoDb.send(new UpdateCommand(params));
   return updated;
 };
 
@@ -139,7 +143,7 @@ const getOrder = async (channelAccountId, orderId) => {
       ':order': `ORDER#${orderId}`
     }
   };
-  const { Items: items, Count: count } = await dynamoDb.query(params).promise();
+  const { Items: items, Count: count } = await dynamoDb.send(new QueryCommand(params));
   if (count === 0) {
     throw Error('Order does not exist');
   }
@@ -162,7 +166,7 @@ const addOrder = async (channelAccountId, orderId, channel, created) => {
     },
     ReturnValues: 'ALL_OLD'
   };
-  await dynamoDb.put(params).promise();
+  await dynamoDb.send(new PutCommand(params));
   return true;
 };
 
