@@ -10,28 +10,23 @@ const { AWS_ACCOUNT_ID, SNS_TOPIC_NAME } = process.env;
 
 const sns = new SNS();
 
-module.exports.handler = (event, context, callback) => {
+module.exports.handler = (event) => {
   const data = JSON.parse(event.body);
   const params = {
     Message: JSON.stringify({ ...data, channel: event.pathParameters.channel }),
     TopicArn: `arn:aws:sns:us-east-2:${AWS_ACCOUNT_ID}:${SNS_TOPIC_NAME}`,
   };
 
+  if (data.topic !== 'orders_v2') {
+    console.log('Not an order notification');
+    return;
+  }
+
   sns.publish(params, (error) => {
     if (error) {
-      console.error(error);
-      callback(null, {
-        statusCode: 501,
-        headers: { 'Content-Type': 'text/plain' },
-        body: 'Couldn\'t send the event due an internal error. Please try again later.',
-      });
+      console.error('Notification publish error', error);
+    } else {
+      console.log('Notification published');
     }
-
-    const response = {
-      statusCode: 200,
-      body: JSON.stringify({ message: 'Successfully sent the event to the processNotification SNS' }),
-    };
-    console.log('Publishing notification');
-    callback(null, response);
   });
 };
