@@ -10,11 +10,15 @@ const { AWS_ACCOUNT_ID, SNS_TOPIC_NAME } = process.env;
 
 const sns = new SNS();
 
+const TOPIC_ARN = `arn:aws:sns:us-east-2:${AWS_ACCOUNT_ID}:${SNS_TOPIC_NAME}`;
+const DEFAULT_MESSAGE_GROUP_ID = 'default-message-group-id';
+
 module.exports.handler = (event) => {
   const data = JSON.parse(event.body);
   const params = {
     Message: JSON.stringify({ ...data, channel: event.pathParameters.channel }),
-    TopicArn: `arn:aws:sns:us-east-2:${AWS_ACCOUNT_ID}:${SNS_TOPIC_NAME}`,
+    TopicArn: TOPIC_ARN,
+    MessageGroupId: DEFAULT_MESSAGE_GROUP_ID
   };
 
   if (data.topic !== 'orders_v2') {
