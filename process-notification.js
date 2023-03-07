@@ -2,8 +2,10 @@
 
 const mercadolibre = require('./src/mercadolibre');
 
-module.exports.handler = async event => {
-  const notification = JSON.parse(event.Records[0].Sns.Message);
-  console.log('Processing notification', notification);
-  await mercadolibre.handleNotification(notification);
+module.exports.handler = async sqsEvent => {
+  for(const message of sqsEvent.Records) {
+    const notification = JSON.parse(message.body);
+    console.log('Processing notification', notification);
+    await mercadolibre.handleNotification(notification);
+  }
 };
