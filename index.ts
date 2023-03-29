@@ -1,20 +1,19 @@
-'use strict';
-
-const serverless = require('serverless-http');
-const bodyParser = require('body-parser');
-const express = require('express');
-const cors = require('cors');
+import serverless from 'serverless-http';
+import * as bodyParser from 'body-parser';
+import express, { Request, Response } from 'express';
+import cors from 'cors';
+import * as dotenv from 'dotenv'
 
 if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
+  dotenv.config();
 }
 
-const auth = require('./src/auth');
-const axiora = require('./src/axiora');
-const mercadolibre = require('./src/mercadolibre');
-const shopify = require('./src/shopify');
-const updateInventory = require('./src/update-inventory');
-const shopifyOrderCreated = require('./src/webhooks/shopify-order-created');
+import { auth } from './src/auth';
+import { axiora } from './src/axiora';
+import { mercadolibre } from './src/mercadolibre';
+import { shopify } from './src/shopify';
+import { updateInventory } from './src/update-inventory';
+import shopifyOrderCreated from './src/webhooks/shopify-order-created';
 
 const app = express();
 
@@ -30,15 +29,15 @@ app.use(
 );
 app.use(bodyParser.json({ strict: false }));
 
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.send('Axiora API ' + process.env.STAGE);
 });
 
-app.post('/', (req, res) => {
+app.post('/', (req: Request, res: Response) => {
   res.send('Axiora API POST req, env ' + process.env.STAGE);
 });
 
-app.post('/sign-up', async (req, res) => {
+app.post('/sign-up', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (email && password) {
     try {
@@ -48,7 +47,7 @@ app.post('/sign-up', async (req, res) => {
         created_at,
         token
       });
-    } catch (error) {
+    } catch (error: any) {
       res.status(400).send({
         error: error.name,
         message: error.message
@@ -61,7 +60,7 @@ app.post('/sign-up', async (req, res) => {
   }
 });
 
-app.post('/sign-in', async (req, res) => {
+app.post('/sign-in', async (req: Request, res: Response) => {
   const { email, password } = req.body;
   if (email && password) {
     try {
@@ -70,7 +69,7 @@ app.post('/sign-in', async (req, res) => {
         email,
         token
       });
-    } catch (error) {
+    } catch (error: any) {
       res.status(400).send({
         error: error.name,
         message: error.message
@@ -83,26 +82,26 @@ app.post('/sign-in', async (req, res) => {
   }
 });
 
-app.get('/stores', auth.verifyTokenMiddleware, async (req, res) => {
-  await auth.channelsSetAuth(req.email);
-  const stores = await axiora.getStores(req.email);
+app.get('/stores', auth.verifyTokenMiddleware, async (req: Request, res: Response) => {
+  await auth.channelsSetAuth(res.locals.email);
+  const stores = await axiora.getStores(res.locals.email);
   res.status(200).send(stores);
 });
 
 app.post(
   '/mercadolibre/store',
   auth.verifyTokenMiddleware,
-  async (req, res) => {
+  async (req: Request, res: Response) => {
     const { meliUserId, code, redirectUri } = req.body;
     try {
       const created = await mercadolibre.addStore(
-        req.email,
+        res.locals.email,
         meliUserId,
         code,
         redirectUri
       );
       res.status(201).send(created);
-    } catch (error) {
+    } catch (error: any) {
       res.status(400).send({
         error: error.name,
         message: error.message
@@ -114,31 +113,31 @@ app.post(
 app.get(
   '/mercadolibre/questions',
   auth.verifyTokenMiddleware,
-  async (req, res) => {
-    await auth.channelsSetAuth(req.email);
+  async (req: Request, res: Response) => {
+    await auth.channelsSetAuth(res.locals.email);
     const questions = await mercadolibre.getQuestions();
     res.status(200).send(questions);
   }
 );
 
-app.put('/inventory', auth.verifyTokenMiddleware, async (req, res) => {
-  await auth.channelsSetAuth(req.email);
+app.put('/inventory', auth.verifyTokenMiddleware, async (req: Request, res: Response) => {
+  await auth.channelsSetAuth(res.locals.email);
   const { sku, quantity } = req.body;
-  const updatedItems = await updateInventory(req.email, sku, quantity);
+  const updatedItems = await updateInventory(res.locals.email, sku, quantity);
   res.json(updatedItems);
 });
 
-app.post('/shopify/product', auth.verifyTokenMiddleware, async (req, res) => {
-  await auth.channelsSetAuth(req.email);
+app.post('/shopify/product', auth.verifyTokenMiddleware, async (req: Request, res: Response) => {
+  await auth.channelsSetAuth(res.locals.email);
   const createdProduct = await shopify.createProduct(req.body);
   res.json(createdProduct);
 });
 
-app.post('/shopify/order-created/:shopifyUuid', async (req, res) => {
+app.post('/shopify/order-created/:shopifyUuid', async (req: Request, res: Response) => {
   const email = await auth.channelsSetAuth(null, req.params.shopifyUuid);
   const orderCreatedResponse = await shopifyOrderCreated(email, req.body);
   console.log('Shopify order created', orderCreatedResponse);
   res.json(orderCreatedResponse);
 });
 
-module.exports.handler = serverless(app);
+export const handler = serverless(app);

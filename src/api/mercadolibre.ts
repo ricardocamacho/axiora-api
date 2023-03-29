@@ -1,19 +1,23 @@
-'use strict';
+import axios, { AxiosInstance } from 'axios';
+import * as dotenv from 'dotenv'
 
-const axios = require('axios');
-
-const database = require('../database');
+import { Store, Profile, Item, Order, OAuthTokenResponse } from '../types/mercadolibre';
+import { database } from '../database';
 
 if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
+  dotenv.config();
 }
+
+type ItemsBySkuResponse = {
+  results: string[]
+};
 
 const CLIENT_ID = process.env.MELI_CLIENT_ID;
 const CLIENT_SECRET = process.env.MELI_CLIENT_SECRET;
 
-const stores = [];
+const stores: Store[] = [];
 
-const setStores = meliStores => {
+const setStores = (meliStores: Store[]) => {
   stores.length = 0;
   meliStores.forEach(store => {
     store.api = new MercadoLibreApi(
@@ -25,8 +29,12 @@ const setStores = meliStores => {
   });
 };
 
-class MercadoLibreApi {
-  constructor(accessToken, refreshTokenValue, meliUserId) {
+export class MercadoLibreApi {
+  axiosInstance: AxiosInstance;
+  refreshTokenValue: string;
+  meliUserId: number;
+
+  constructor(accessToken: string, refreshTokenValue: string, meliUserId: number) {
     this.axiosInstance = axios.create({
       baseURL: 'https://api.mercadolibre.com',
       headers: {
@@ -39,7 +47,7 @@ class MercadoLibreApi {
     this.setExpiredTokenInterceptor();
   }
 
-  setExpiredTokenInterceptor() {
+  setExpiredTokenInterceptor(): void {
     this.axiosInstance.interceptors.response.use(
       response => {
         return response;
@@ -56,9 +64,11 @@ class MercadoLibreApi {
           this.setRefreshToken(refresh_token);
           // Find store in database and update it with new tokens
           const store = await database.getStore(this.meliUserId);
-          store.data.access_token = access_token;
-          store.data.refresh_token = refresh_token;
-          await database.updateStore(store.PK, this.meliUserId, store.data);
+          if (store) {
+            store.data.access_token = access_token;
+            store.data.refresh_token = refresh_token;
+            await database.updateStore(store.PK, this.meliUserId, store.data);
+          }
           // Try the original request with the new token
           originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
           return this.axiosInstance.request(originalRequest);
@@ -68,11 +78,11 @@ class MercadoLibreApi {
     );
   }
 
-  setRefreshToken(token) {
+  setRefreshToken(token: string): void {
     this.refreshTokenValue = token;
   }
 
-  setToken(token) {
+  setToken(token: string | null): void {
     if (token) {
       this.axiosInstance.defaults.headers.common[
         'Authorization'
@@ -82,7 +92,7 @@ class MercadoLibreApi {
     }
   }
 
-  async refreshToken() {
+  async refreshToken(): Promise<{ access_token: string, refresh_token: string }> {
     const response = await this.axiosInstance.post(
       '/oauth/token',
       {
@@ -100,19 +110,19 @@ class MercadoLibreApi {
     return response.data;
   }
 
-  async getUser() {
+  async getUser(): Promise<Profile> {
     const response = await this.axiosInstance.get('/users/me');
     return response.data;
   }
 
-  async getQuestions() {
+  async getQuestions(): Promise<object> {
     const response = await this.axiosInstance.get(
       `/questions/search?seller_id=${this.meliUserId}&sort_fields=date_created&sort_types=DESC&status=UNANSWERED`
     );
     return response.data;
   }
 
-  async getItemsBySKU(sku, aditionalParams) {
+  async getItemsBySKU(sku: string, aditionalParams: object = {}): Promise<ItemsBySkuResponse> {
     const response = await this.axiosInstance.get(
       `/users/${this.meliUserId}/items/search?seller_sku=${sku}`,
       {
@@ -122,7 +132,7 @@ class MercadoLibreApi {
     return response.data;
   }
 
-  async getItem(itemId, aditionalParams) {
+  async getItem(itemId: string, aditionalParams: object): Promise<Item> {
     const response = await this.axiosInstance.get(
       `/items/${itemId}?attributes=variations`,
       {
@@ -132,25 +142,25 @@ class MercadoLibreApi {
     return response.data;
   }
 
-  async updateItem(itemId, item) {
+  async updateItem(itemId: string, item: object): Promise<object> {
     const response = await this.axiosInstance.put(`/items/${itemId}`, item);
     return response.data;
   }
 
-  async getOrder(orderId) {
+  async getOrder(orderId: number): Promise<Order> {
     const response = await this.axiosInstance.get(`/orders/${orderId}`);
     return response.data;
   }
 }
 
-const axiosInstance = axios.create({
+const axiosInstance: AxiosInstance = axios.create({
   baseURL: 'https://api.mercadolibre.com',
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-const getTokens = async (code, redirectUri) => {
+const getTokens = async (code: string, redirectUri: string): Promise<OAuthTokenResponse> => {
   const response = await axiosInstance.post('/oauth/token', {
     grant_type: 'authorization_code',
     client_id: CLIENT_ID,
@@ -161,10 +171,8 @@ const getTokens = async (code, redirectUri) => {
   return response.data;
 };
 
-const mercadolibreApi = {
+export const mercadolibreApi = {
   stores,
   setStores,
   getTokens
 };
-
-module.exports = mercadolibreApi;

@@ -1,9 +1,19 @@
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import * as dotenv from 'dotenv'
+
+import { Channel, DbMercadolibreData, DbShopifyData, DbStore } from '../types/common';
 
 if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
+  dotenv.config();
 }
+
+type ChannelAccountId = number | string;
+
+type User = {
+  last_integration_date: string,
+  hash: string
+};
 
 const { AWS_ACCOUNT_REGION, DYNAMODB_AXIORA_TABLE: AXIORA_TABLE } = process.env;
 
@@ -11,7 +21,7 @@ const dynamoDbClient = new DynamoDBClient({ region: AWS_ACCOUNT_REGION });
 
 const dynamoDb = DynamoDBDocumentClient.from(dynamoDbClient);
 
-const getUser = async email => {
+const getUser = async (email: string): Promise<User> => {
   const params = {
     TableName: AXIORA_TABLE,
     KeyConditionExpression: 'PK = :email and SK = :profile',
@@ -24,10 +34,10 @@ const getUser = async email => {
   if (count === 0) {
     throw Error('User not found');
   }
-  return items[0];
+  return items?.[0] as User;
 };
 
-const createUser = async (email, hash) => {
+const createUser = async (email: string, hash: string) => {
   const created_at = new Date().toISOString();
   const params = {
     TableName: AXIORA_TABLE,
@@ -52,7 +62,7 @@ const createUser = async (email, hash) => {
   };
 };
 
-const updateUserLastIntegrationDate = async (email, lastIntegrationDate) => {
+const updateUserLastIntegrationDate = async (email: string, lastIntegrationDate: string) => {
   const params = {
     TableName: AXIORA_TABLE,
     Key: { PK: `USER#${email}`, SK: 'PROFILE' },
@@ -66,7 +76,7 @@ const updateUserLastIntegrationDate = async (email, lastIntegrationDate) => {
   return updated;
 };
 
-const getStores = async email => {
+const getStores = async (email: string): Promise<DbStore<DbMercadolibreData | DbShopifyData>[]> =>  {
   const params = {
     TableName: AXIORA_TABLE,
     KeyConditionExpression: 'PK = :email and begins_with(SK,:beginsWith)',
@@ -76,11 +86,11 @@ const getStores = async email => {
     }
   };
   const { Items: items } = await dynamoDb.send(new QueryCommand(params));
-  const activeStores = items.filter(item => item.status === 'ACTIVE');
-  return activeStores;
+  const activeStores = items?.filter(item => item.status === 'ACTIVE') || [];
+  return activeStores as (DbStore<DbMercadolibreData | DbShopifyData>[]);
 };
 
-const getStore = async channelAccountId => {
+const getStore = async (channelAccountId: ChannelAccountId) => {
   const params = {
     TableName: AXIORA_TABLE,
     IndexName: 'SK-PK-index',
@@ -93,10 +103,10 @@ const getStore = async channelAccountId => {
   if (count === 0) {
     throw Error('Store does not exist');
   }
-  return items[0];
+  return items?.[0];
 };
 
-const addStore = async (email, channel, channelAccountId, storeData) => {
+const addStore = async (email: string, channel: Channel, channelAccountId: ChannelAccountId, storeData: DbMercadolibreData | DbShopifyData) => {
   const created_at = new Date().toISOString();
   const params = {
     TableName: AXIORA_TABLE,
@@ -119,7 +129,7 @@ const addStore = async (email, channel, channelAccountId, storeData) => {
   return { created_at };
 };
 
-const updateStore = async (PK, channelAccountId, storeData) => {
+const updateStore = async (PK: string, channelAccountId: ChannelAccountId, storeData: DbMercadolibreData | DbShopifyData) => {
   const params = {
     TableName: AXIORA_TABLE,
     Key: { PK, SK: `STORE#${channelAccountId}` },
@@ -134,7 +144,7 @@ const updateStore = async (PK, channelAccountId, storeData) => {
   return updated;
 };
 
-const getOrder = async (channelAccountId, orderId) => {
+const getOrder = async (channelAccountId: ChannelAccountId, orderId: number) => {
   const params = {
     TableName: AXIORA_TABLE,
     KeyConditionExpression: 'PK = :store and SK = :order',
@@ -150,7 +160,7 @@ const getOrder = async (channelAccountId, orderId) => {
   return items;
 };
 
-const addOrder = async (channelAccountId, orderId, channel, created) => {
+const addOrder = async (channelAccountId: ChannelAccountId, orderId: number, channel: Channel, created: string) => {
   const params = {
     TableName: AXIORA_TABLE,
     Item: {
@@ -170,7 +180,7 @@ const addOrder = async (channelAccountId, orderId, channel, created) => {
   return true;
 };
 
-const database = {
+export const database = {
   createUser,
   getUser,
   updateUserLastIntegrationDate,
@@ -181,5 +191,3 @@ const database = {
   getOrder,
   addOrder
 };
-
-module.exports = database;

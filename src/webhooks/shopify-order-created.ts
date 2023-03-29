@@ -1,22 +1,42 @@
-'use strict';
+import { database } from '../database';
+import { mercadolibreApi, MercadoLibreApi } from '../api/mercadolibre';
+import { shopifyApi } from '../api/shopify';
+import { slackApi } from '../api/slack';
+import { mercadolibre } from '../mercadolibre';
 
-const database = require('../database');
-const mercadolibreApi = require('../api/mercadolibre');
-const shopifyApi = require('../api/shopify');
-const slackApi = require('../api/slack');
-const mercadolibre = require('../mercadolibre');
+import {
+  UpdatedItem as MeliUpdatedItem,
+  UpdatedItemResponse as MeliUpdatedItemResponse,
+  VariationResponse as MeliVariationResponse
+} from '../types/mercadolibre';
+import { AdjustInventoryLevelQuantityResponse, Order } from '../types/shopify';
+
+type AdjustedInventoryMercadolibre = {
+  sku: string,
+  adjustedItems: (MeliUpdatedItemResponse | MeliUpdatedItem)[]
+}[];
+
+type AdjustedInventoryShopify = {
+  sku: string,
+  adjustedItems: AdjustInventoryLevelQuantityResponse[]
+};
+
+type AdjustedInventories = {
+  mercadolibre: AdjustedInventoryMercadolibre[] | null,
+  shopify: AdjustedInventoryShopify[] | null
+};
 
 const adjustInventoryBySkuMercadolibre = async (
-  storeApi,
-  sku,
-  purchasedQuantity
-) => {
+  storeApi: MercadoLibreApi,
+  sku: string,
+  purchasedQuantity: number
+): Promise<(MeliUpdatedItemResponse | MeliUpdatedItem)[]> => {
   // Get item IDs having given SKU
   const { results: itemIds } = await storeApi.getItemsBySKU(sku, {
     // status: 'active'
   });
   // For each item ID
-  let updatedItems = await Promise.all(
+  const updatedItems: MeliUpdatedItem[] = await Promise.all(
     itemIds.map(async itemId => {
       try {
         const updatedItem = await mercadolibre.updateItemSkuQuantity(
@@ -27,19 +47,19 @@ const adjustInventoryBySkuMercadolibre = async (
           purchasedQuantity
         );
         return { id: itemId, ...updatedItem };
-      } catch (error) {
+      } catch (error: any) {
         return error.response.data;
       }
     })
   );
   // Format response for easier reading
-  updatedItems = updatedItems.map(item => {
+  const updatedItemsResponse: (MeliUpdatedItemResponse | MeliUpdatedItem)[] = updatedItems.map(item => {
     if (item.error) return item;
-    const updatedItem = { id: item.id };
+    const updatedItem: MeliUpdatedItemResponse = { id: item.id };
     if (item.variations && item.variations.length) {
       updatedItem.variations = item.variations.map(variation => {
-        const formattedVariation = {
-          availableQuantity: variation.available_quantity
+        const formattedVariation: MeliVariationResponse = {
+          availableQuantity: variation.available_quantity,
         };
         const variationSkuAttr =
           variation.attributes &&
@@ -63,14 +83,14 @@ const adjustInventoryBySkuMercadolibre = async (
     }
     return updatedItem;
   });
-  return updatedItems;
+  return updatedItemsResponse;
 };
 
 const adjustInventoryBySkuShopify = async (
-  variantId,
-  sku,
-  purchasedQuantity
-) => {
+  variantId: number,
+  sku: string,
+  purchasedQuantity: number
+): Promise<AdjustInventoryLevelQuantityResponse[]> => {
   const {
     data: {
       productVariants: { edges: products }
@@ -94,8 +114,8 @@ const adjustInventoryBySkuShopify = async (
   return inventoryLevelsIdsUpdated;
 };
 
-const orderCreated = async (email, order) => {
-  const adjustedInventories = {
+const orderCreated = async (email: string, order: Order) => {
+  const adjustedInventories: AdjustedInventories = {
     mercadolibre: null,
     shopify: null
   };
@@ -103,10 +123,10 @@ const orderCreated = async (email, order) => {
   // MercadoLibre
   adjustedInventories.mercadolibre = await Promise.all(
     mercadolibreApi.stores.map(async store => {
-      const adjustedInventoryMercadolibre = [];
+      const adjustedInventoryMercadolibre: AdjustedInventoryMercadolibre = [];
       for (const item of orderItems) {
         const adjustedItems = await adjustInventoryBySkuMercadolibre(
-          store.api,
+          store.api as MercadoLibreApi,
           item.sku,
           item.quantity
         );
@@ -148,4 +168,4 @@ const orderCreated = async (email, order) => {
   return adjustedInventories;
 };
 
-module.exports = orderCreated;
+export default orderCreated;

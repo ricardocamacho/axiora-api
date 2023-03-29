@@ -1,11 +1,12 @@
-const shopifyApi = require('./api/shopify');
+import { InventoryLevel } from './types/shopify'
+import { shopifyApi } from './api/shopify';
 
-const createProduct = async productInput => {
+const createProduct = async (productInput: object) => {
   const createdProduct = await shopifyApi.createProduct(productInput);
   return createdProduct;
 };
 
-const adjustInventory = async (sku, purchasedQuantity) => {
+const adjustInventory = async (sku: string, purchasedQuantity: number): Promise<InventoryLevel[]> => {
   console.log(`Actualizando ${sku} cantidad comprada ${purchasedQuantity}`);
   const {
     data: {
@@ -26,9 +27,8 @@ const adjustInventory = async (sku, purchasedQuantity) => {
   return inventoryLevels;
 };
 
-const shopify = {
+export const shopify = {
   createProduct,
   adjustInventory
 };
 
-module.exports = shopify;
