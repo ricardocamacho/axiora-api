@@ -1,10 +1,11 @@
-const database = require('./database');
-const auth = require('./auth');
-const shopify = require('./shopify');
-const mercadolibreApi = require('./api/mercadolibre');
-const slackApi = require('./api/slack');
+import { Order, Notification } from './types/mercadolibre';
+import { database } from './database';
+import { auth } from './auth';
+import { shopify } from './shopify';
+import { mercadolibreApi, MercadoLibreApi } from './api/mercadolibre';
+import { slackApi } from './api/slack';
 
-const addStore = async (email, meliUserId, code, redirectUri) => {
+const addStore = async (email: string, meliUserId: number, code: string, redirectUri: string): Promise<object> => {
   const stores = await database.getStores(email);
   const isAlreadyAdded = stores.find(
     store => store.SK === `STORE#${meliUserId}`
@@ -25,8 +26,8 @@ const addStore = async (email, meliUserId, code, redirectUri) => {
   return created;
 };
 
-const getStoreQuestions = async store => {
-  const storeQuestions = await store.api.getQuestions();
+const getStoreQuestions = async (storeApi: MercadoLibreApi) => {
+  const storeQuestions = await storeApi.getQuestions();
   return storeQuestions;
 };
 
@@ -34,7 +35,7 @@ const getQuestions = async () => {
   if (!mercadolibreApi.stores) throw Error('No stores found');
   const questions = await Promise.all(
     mercadolibreApi.stores.map(async store => {
-      const storeQuestions = await getStoreQuestions(store);
+      const storeQuestions = await getStoreQuestions(store.api as MercadoLibreApi);
       return storeQuestions;
     })
   );
@@ -42,11 +43,11 @@ const getQuestions = async () => {
 };
 
 const updateItemSkuQuantity = async (
-  storeApi,
-  itemId,
-  sku,
-  quantity,
-  purchasedQuantity
+  storeApi: MercadoLibreApi,
+  itemId: string,
+  sku: string,
+  quantity: number | null,
+  purchasedQuantity?: number
 ) => {
   let updatedItem;
   // Get the item
@@ -68,10 +69,10 @@ const updateItemSkuQuantity = async (
             attr.value_name &&
             attr.value_name === sku
         );
-      if (variationSkuAttr) {
-        variation.available_quantity = purchasedQuantity
-          ? variation.available_quantity - purchasedQuantity
-          : quantity;
+      if (variationSkuAttr && purchasedQuantity) {
+        variation.available_quantity = variation.available_quantity - purchasedQuantity;
+      } else if (variationSkuAttr && quantity !== null) {
+        variation.available_quantity = quantity;
       }
     });
     // Save the item variations
@@ -80,7 +81,7 @@ const updateItemSkuQuantity = async (
     });
   }
   // If the item does not have variations
-  else {
+  else if (item.available_quantity) {
     updatedItem = await storeApi.updateItem(itemId, {
       available_quantity: purchasedQuantity
         ? item.available_quantity - purchasedQuantity
@@ -90,7 +91,7 @@ const updateItemSkuQuantity = async (
   return updatedItem;
 };
 
-const handleInventory = async (storeApi, order) => {
+const handleInventory = async (storeApi: MercadoLibreApi, order: Order) => {
   const isOrderFromCurrentStore = storeApi.meliUserId === order.seller.id;
   // Only process items with SKU
   const items = order.order_items.filter(item => {
@@ -144,7 +145,7 @@ const handleInventory = async (storeApi, order) => {
               id: itemId,
               purchasedQuantity: item.quantity
             };
-          } catch (error) {
+          } catch (error: any) {
             return error.response.data;
           }
         })
@@ -162,11 +163,11 @@ const handleInventory = async (storeApi, order) => {
   };
 };
 
-const handleOrder = async (email, meliUserId, orderId) => {
+const handleOrder = async (email: string, meliUserId: number, orderId: number) => {
   // Get the store api where original order was placed
-  const storeApi = mercadolibreApi.stores.find(
-    store => store.api.meliUserId === meliUserId
-  ).api;
+  const storeApi = mercadolibreApi?.stores?.find(
+    store => store.api?.meliUserId === meliUserId
+  )?.api as MercadoLibreApi;
   // Get the order details
   const order = await storeApi.getOrder(orderId);
   const orderDate = new Date(order.date_created);
@@ -199,7 +200,7 @@ const handleOrder = async (email, meliUserId, orderId) => {
       // Logic to update inventory for each store
       const handleInventoriesResult = await Promise.all(
         mercadolibreApi.stores.map(async store => {
-          return await handleInventory(store.api, order);
+          return await handleInventory(store.api as MercadoLibreApi, order);
         })
       );
       await database.addOrder(
@@ -239,16 +240,19 @@ const handleOrder = async (email, meliUserId, orderId) => {
   };
 };
 
-const handleNotification = async notification => {
+const handleNotification = async (notification: Notification) => {
   const { resource, user_id: meliUserId, topic } = notification;
   if (topic === 'orders_v2') {
     // Get store based on meli user id
     try {
       const store = await database.getStore(meliUserId);
       // Initialize each meli store api
+      if (!store) {
+        throw new Error('Not a registered store');
+      }
       const email = store.PK.replace('USER#', '');
       await auth.channelsSetAuth(email);
-      const orderId = resource.replace('/orders/', '');
+      const orderId = Number(resource.replace('/orders/', ''));
       const orderResult = await handleOrder(email, meliUserId, orderId);
       const response = { ...notification, orderResult };
       await slackApi.sendMessage(
@@ -262,11 +266,9 @@ const handleNotification = async notification => {
   }
 };
 
-const mercadolibre = {
+export const mercadolibre = {
   addStore,
   getQuestions,
   updateItemSkuQuantity,
   handleNotification
 };
-
-module.exports = mercadolibre;

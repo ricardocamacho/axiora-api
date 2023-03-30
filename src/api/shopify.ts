@@ -1,9 +1,15 @@
-const axios = require('axios');
+import axios, { AxiosInstance } from 'axios';
+import { GetProductsBySkuResponse, AdjustInventoryLevelQuantityResponse, InventoryBulkAdjustQuantityAtLocation, CreateProductResponse } from '../types/shopify'
 
-let axiosInstance;
-let locationId;
+type InventoryItemAdjustment = {
+  inventoryItemId: string,
+  availableDelta: number
+};
 
-const createAxiosInstance = baseUrl => {
+let axiosInstance: AxiosInstance;
+let locationId: string;
+
+const createAxiosInstance = (baseUrl: string) => {
   axiosInstance = axios.create({
     baseURL: baseUrl,
     headers: {
@@ -12,15 +18,15 @@ const createAxiosInstance = baseUrl => {
   });
 };
 
-const setToken = token => {
+const setToken = (token: string) => {
   axiosInstance.defaults.headers.common['X-Shopify-Access-Token'] = token;
 };
 
-const setLocationId = id => {
+const setLocationId = (id: string) => {
   locationId = id;
 };
 
-const getProductsBySku = async sku => {
+const getProductsBySku = async (sku: string): Promise<GetProductsBySkuResponse> => {
   const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
     query: `query ($filter: String!, $locationId: ID!) {
       productVariants(first: 10, query: $filter) {
@@ -51,7 +57,7 @@ const getProductsBySku = async sku => {
   return response.data;
 };
 
-const updateInventoryLevels = async (inventoryItemId, quantity) => {
+const updateInventoryLevels = async (inventoryItemId: string, quantity: number) => {
   const response = await axiosInstance.post(
     '/admin/api/2021-01/inventory_levels/set.json',
     {
@@ -64,9 +70,9 @@ const updateInventoryLevels = async (inventoryItemId, quantity) => {
 };
 
 const adjustInventoryLevelQuantity = async (
-  inventoryLevelId,
-  availableDelta
-) => {
+  inventoryLevelId: string,
+  availableDelta: number
+): Promise<AdjustInventoryLevelQuantityResponse> => {
   const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
     query: `mutation adjustInventoryLevelQuantity($inventoryAdjustQuantityInput: InventoryAdjustQuantityInput!) {
       inventoryAdjustQuantity(input: $inventoryAdjustQuantityInput) {
@@ -90,7 +96,7 @@ const adjustInventoryLevelQuantity = async (
   return response.data;
 };
 
-const inventoryBulkAdjustQuantityAtLocation = async inventoryItemAdjustments => {
+const inventoryBulkAdjustQuantityAtLocation = async (inventoryItemAdjustments: InventoryItemAdjustment[]): Promise<InventoryBulkAdjustQuantityAtLocation> => {
   const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
     query: `mutation inventoryBulkAdjustQuantityAtLocation($inventoryItemAdjustments: [InventoryAdjustItemInput!]!, $locationId: ID!) {
       inventoryBulkAdjustQuantityAtLocation(inventoryItemAdjustments: $inventoryItemAdjustments, locationId: $locationId) {
@@ -113,7 +119,7 @@ const inventoryBulkAdjustQuantityAtLocation = async inventoryItemAdjustments => 
   return response.data;
 };
 
-const createProduct = async productInput => {
+const createProduct = async (productInput: object): Promise<CreateProductResponse> => {
   const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
     query: `mutation($productInput: ProductInput!) {
       productCreate(input: $productInput) {
@@ -130,7 +136,7 @@ const createProduct = async productInput => {
   return response.data;
 };
 
-const shopifyApi = {
+export const shopifyApi = {
   createAxiosInstance,
   setToken,
   setLocationId,
@@ -140,5 +146,3 @@ const shopifyApi = {
   inventoryBulkAdjustQuantityAtLocation,
   createProduct
 };
-
-module.exports = shopifyApi;
