@@ -22,9 +22,9 @@ frameworkVersion: '3'
 useDotenv: true
 
 custom:
-  # serverless-offline:
-  #   noPrependStageInUrl: true
-  #   httpPort: 8080
+  serverless-offline:
+    noPrependStageInUrl: true
+    httpPort: 8080
   serviceStage: ${self:service}-${opt:stage}
   dynamodbAxioraTable: ${self:custom.serviceStage}
   notificationReceiverLambda: ${self:custom.serviceStage}-receiveNotification
@@ -192,4 +192,4 @@ resources:
 plugins:
   - serverless-plugin-typescript
   - serverless-step-functions
-#   - serverless-offline
+  - serverless-offline

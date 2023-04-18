@@ -26,6 +26,17 @@ const setLocationId = (id: string) => {
   locationId = id;
 };
 
+const getShopInfo = async () => {
+  const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
+    query: `query {
+      shop {
+        name
+      }
+    }`
+  });
+  return response.data;
+}
+
 const getProductsBySku = async (sku: string): Promise<GetProductsBySkuResponse> => {
   const response = await axiosInstance.post('/admin/api/2021-01/graphql.json', {
     query: `query ($filter: String!, $locationId: ID!) {
@@ -140,6 +151,7 @@ export const shopifyApi = {
   createAxiosInstance,
   setToken,
   setLocationId,
+  getShopInfo,
   getProductsBySku,
   updateInventoryLevels,
   adjustInventoryLevelQuantity,

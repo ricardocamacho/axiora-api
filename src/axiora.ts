@@ -1,6 +1,7 @@
 import { DbMercadolibreData, DbShopifyData, DbStore } from './types/common';
 import { database } from './database';
 import { mercadolibreApi, MercadoLibreApi } from './api/mercadolibre';
+import { shopifyApi } from './api/shopify';
 
 const getStores = async (email: string) => {
   const stores: DbStore<DbMercadolibreData | DbShopifyData>[] = await database.getStores(email);
@@ -28,6 +29,25 @@ const getStores = async (email: string) => {
             data: {
               ...store.data,
               name: `Cuenta bloqueada: ${meliStore.user_id}`
+            }
+          }
+        }
+      } else if (store.channel === 'shopify') {
+        try {
+          const shopifyShopInfo = await shopifyApi.getShopInfo();
+          return {
+            ...store,
+            data: {
+              ...store.data,
+              name: shopifyShopInfo.data.shop.name
+            }
+          };
+        } catch (error) {
+          return {
+            ...store,
+            data: {
+              ...store.data,
+              name: 'Nombre desconocido'
             }
           }
         }
