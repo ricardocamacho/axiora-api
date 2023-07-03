@@ -38,6 +38,11 @@ const updateInventoryMercadolibre = async (storeApi: MercadoLibreApi, sku: strin
   const updatedItemsResponse: (MeliUpdatedItemResponse | MeliUpdatedItem)[] = updatedItems.map(item => {
     if (item.error) return item;
     const updatedItem: MeliUpdatedItemResponse = { id: item.id };
+    if (item.shipping.logistic_type === 'fulfillment') {
+      updatedItem.updated = false;
+      updatedItem.reason = 'fulfillment';
+      return updatedItem;
+    };
     if (item.variations && item.variations.length) {
       updatedItem.variations = item.variations.map(variation => {
         const formattedVariation: MeliVariationResponse = {

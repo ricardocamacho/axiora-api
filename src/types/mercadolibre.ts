@@ -39,9 +39,14 @@ type Variation = {
   available_quantity: number
 };
 
+export type Shipping = {
+  logistic_type: 'fulfillment' | 'xd_drop_off' | 'self_service'
+};
+
 export type Item = {
   available_quantity?: number,
-  variations?: Variation[]
+  variations?: Variation[],
+  shipping: Shipping
 };
 
 export type UpdatedItem = Item & {
@@ -59,6 +64,7 @@ export type UpdatedItemResponse = {
   id: string,
   availableQuantity?: number,
   updated?: boolean,
+  reason?: string,
   variations?: VariationResponse[]
 };
 
@@ -78,5 +84,8 @@ export type Order = {
   order_items: OrderItem[],
   date_created: string,
   status: string,
-  tags: string[]
+  tags: string[],
+  shipping: {
+    id: number
+  }
 };

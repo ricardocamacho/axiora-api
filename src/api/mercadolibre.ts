@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import * as dotenv from 'dotenv'
 
-import { Store, Profile, Item, Order, OAuthTokenResponse } from '../types/mercadolibre';
+import { Store, Profile, Item, Order, Shipping, OAuthTokenResponse } from '../types/mercadolibre';
 import { database } from '../database';
 
 if (process.env.NODE_ENV !== 'production') {
@@ -134,7 +134,7 @@ export class MercadoLibreApi {
 
   async getItem(itemId: string, aditionalParams: object): Promise<Item> {
     const response = await this.axiosInstance.get(
-      `/items/${itemId}?attributes=variations`,
+      `/items/${itemId}`,
       {
         params: aditionalParams
       }
@@ -149,6 +149,11 @@ export class MercadoLibreApi {
 
   async getOrder(orderId: number): Promise<Order> {
     const response = await this.axiosInstance.get(`/orders/${orderId}`);
+    return response.data;
+  }
+
+  async getShipment(shipmentId: number): Promise<Shipping> {
+    const response = await this.axiosInstance.get(`/shipments/${shipmentId}`);
     return response.data;
   }
 }

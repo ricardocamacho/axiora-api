@@ -54,6 +54,9 @@ const updateItemSkuQuantity = async (
   const item = await storeApi.getItem(itemId, {
     include_attributes: 'all'
   });
+  if (item.shipping.logistic_type === 'fulfillment') {
+    return item;
+  }
   // If the item has variations
   if (item.variations && item.variations.length > 0) {
     const { variations } = item;
@@ -196,6 +199,31 @@ const handleOrder = async (email: string, meliUserId: number, orderId: number) =
     } catch (error) {
       // Order does not exists
 
+      if (order.shipping.id) {
+        try {
+          const shipping = await storeApi.getShipment(order.shipping.id);
+          if (shipping.logistic_type === 'fulfillment') {
+            await database.addOrder(
+              meliUserId,
+              orderId,
+              'mercadolibre',
+              order.date_created
+            );
+            mercadolibreResponse = {
+              meliUserId: storeApi.meliUserId,
+              orderId: orderId,
+              updated: false,
+              message: `La orden ${order.id} es de tipo FULL (fulfillment)`
+            }
+            return {
+              mercadolibre: mercadolibreResponse
+            };
+          }
+        } catch (shippingApiError) {
+          console.log('Error consultando el API de shipments', shippingApiError);
+        }
+      }
+      
       // Mercadolibre
       // Logic to update inventory for each store
       const handleInventoriesResult = await Promise.all(
