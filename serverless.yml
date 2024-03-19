@@ -57,6 +57,12 @@ provider:
           Resource:
             - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodbAxioraTable}
             - arn:aws:dynamodb:us-east-2:571994632048:table/${self:custom.dynamodbAxioraTable}/index/SK-PK-index
+        - Effect: 'Allow'
+          Action:
+            - ses:SendEmail
+            - ses:SendRawEmail
+          Resource:
+            - arn:aws:ses:us-east-2:571994632048:identity/hello@codingsquad.co
 
   environment:
     AWS_ACCOUNT_ID: 571994632048

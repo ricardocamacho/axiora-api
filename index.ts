@@ -8,6 +8,7 @@ if (process.env.NODE_ENV !== 'production') {
   dotenv.config();
 }
 
+import contact from './src/contact';
 import { auth } from './src/auth';
 import { axiora } from './src/axiora';
 import { mercadolibre } from './src/mercadolibre';
@@ -22,6 +23,8 @@ app.use(
     origin: [
       'https://dev.axiora.co',
       'https://axiora.co',
+      'https://codingsquad.co',
+      'https://www.codingsquad.co',
       'http://mercadolibre-gogo.s3-website.us-east-2.amazonaws.com',
       'http://localhost:3000'
     ]
@@ -78,6 +81,28 @@ app.post('/sign-in', async (req: Request, res: Response) => {
   } else {
     res.status(400).send({
       error: 'Email and password are required'
+    });
+  }
+});
+
+app.post('/contact', async (req: Request, res: Response) => {
+  const { email, name, phone, message } = req.body;
+  if (email && name && message ) {
+    try {
+      const sent = await contact(email, name, phone, message);
+      res.status(200).send({
+        email,
+        sent
+      });
+    } catch (error: any) {
+      res.status(400).send({
+        error: error.name,
+        message: error.message
+      });
+    }
+  } else {
+    res.status(400).send({
+      error: 'Name, email, and message are required'
     });
   }
 });
