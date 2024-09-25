@@ -167,7 +167,9 @@ const addOrder = async (channelAccountId: ChannelAccountId, orderId: number, cha
       PK: `STORE#${channelAccountId}`,
       SK: `ORDER#${orderId}`,
       channel,
-      created
+      created,
+      // ttl for 15 day
+      ttl: Math.floor(Date.now() / 1000) + (15 * 24 * 60 * 60),
     },
     ConditionExpression: 'PK <> :store AND SK <> :order',
     ExpressionAttributeValues: {
