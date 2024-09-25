@@ -149,6 +149,9 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: 'ALL'
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
         BillingMode: PAY_PER_REQUEST
     processNotificationTopic:
       Type: AWS::SNS::Topic
