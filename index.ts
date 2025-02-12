@@ -22,11 +22,14 @@ app.use(
   cors({
     origin: [
       'https://dev.axiora.co',
+      'https://dev.app.axiora.co',
+      'https://app.axiora.co',
       'https://axiora.co',
       'https://codingsquad.co',
       'https://www.codingsquad.co',
       'http://mercadolibre-gogo.s3-website.us-east-2.amazonaws.com',
-      'http://localhost:3000'
+      'http://localhost:3000',
+      'http://localhost:5173'
     ]
   })
 );
