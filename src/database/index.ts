@@ -1,12 +1,8 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import * as dotenv from 'dotenv'
 
 import { Channel, DbMercadolibreData, DbShopifyData, DbStore } from '../types/common';
-
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
+import config from '../config';
 
 type ChannelAccountId = number | string;
 
@@ -15,7 +11,7 @@ type User = {
   hash: string
 };
 
-const { AWS_ACCOUNT_REGION, DYNAMODB_AXIORA_TABLE: AXIORA_TABLE } = process.env;
+const { AWS_ACCOUNT_REGION, DYNAMODB_AXIORA_TABLE: AXIORA_TABLE } = config;
 
 const dynamoDbClient = new DynamoDBClient({ region: AWS_ACCOUNT_REGION });
 

@@ -1,16 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { verify, sign, JwtPayload } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import * as dotenv from 'dotenv'
 
 import { DbStore, DbMercadolibreData, DbShopifyData } from './types/common';
+import config from './config';
 import { database } from './database';
 import { mercadolibreApi } from './api/mercadolibre';
 import { shopifyApi } from './api/shopify';
-
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
 
 type RequestWithEmail = Request & {
   email?: string
@@ -25,7 +21,7 @@ const verifyTokenMiddleware = async (req: RequestWithEmail, res: Response, next:
   if (!token) return res.status(401).send({ error: 'Token is not provided' });
   token = token.split('Bearer ')[1];
   try {
-    const decoded: Decoded = await verify(token, process.env.JWT_SECRET_KEY || '') as Decoded;
+    const decoded: Decoded = await verify(token, config.JWT_SECRET_KEY || '') as Decoded;
     res.locals.email = decoded.email;
     next();
   } catch (err) {
@@ -36,7 +32,7 @@ const verifyTokenMiddleware = async (req: RequestWithEmail, res: Response, next:
 const signUp = async (email: string, password: string) => {
   const hash = await bcrypt.hash(password, 10);
   const { created_at } = await database.createUser(email, hash);
-  const token = sign({ email }, process.env.JWT_SECRET_KEY || '');
+  const token = sign({ email }, config.JWT_SECRET_KEY || '');
   return {
     email,
     created_at,
@@ -50,7 +46,7 @@ const signIn = async (email: string, password: string) => {
   if (!compareResult) {
     throw Error('Email and password does not match');
   }
-  const token = sign({ email }, process.env.JWT_SECRET_KEY || '');
+  const token = sign({ email }, config.JWT_SECRET_KEY || '');
   return {
     email,
     token

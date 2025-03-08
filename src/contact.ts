@@ -1,14 +1,8 @@
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
-import * as dotenv from 'dotenv'
-
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
-
-const { AWS_ACCOUNT_REGION } = process.env;
+import config from './config';
 
 const client = new SESv2Client({
-  region: AWS_ACCOUNT_REGION
+  region: config.AWS_ACCOUNT_REGION
 });
 
 const contact = async (email: string, name: string, phone: string, message: string) => {

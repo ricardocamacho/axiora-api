@@ -1,19 +1,15 @@
 import axios, { AxiosInstance } from 'axios';
-import * as dotenv from 'dotenv'
+import config from '../config';
 
 import { Store, Profile, Item, Order, Shipping, OAuthTokenResponse } from '../types/mercadolibre';
 import { database } from '../database';
-
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
 
 type ItemsBySkuResponse = {
   results: string[]
 };
 
-const CLIENT_ID = process.env.MELI_CLIENT_ID;
-const CLIENT_SECRET = process.env.MELI_CLIENT_SECRET;
+const CLIENT_ID = config.MELI_CLIENT_ID;
+const CLIENT_SECRET = config.MELI_CLIENT_SECRET;
 
 const stores: Store[] = [];
 

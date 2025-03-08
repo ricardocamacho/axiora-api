@@ -20,9 +20,27 @@ The Axiora API infrastructure was created using the Serverless framework, all th
 Useful commands:
 ```
 npm install
+npm run sls-local
+npm run sls-deploy:dev
+npm run sls-deploy:prod
+```
+
+### Run as a server/container (optional)
+
+You can run the API as a server (instead of a lambda):
+
+Run the server locally:
+```
+npm install
+npm run watch
 npm run local
-npm run deploy:dev
-npm run deploy:prod
+```
+
+You can dockerize it:
+```
+npm run docker-build:dev
+npm run docker-build:prod
+docker run -p 8080:3000 axiora-api
 ```
 
 ## Environment Variables
@@ -30,8 +48,12 @@ npm run deploy:prod
 You will need a `.env.dev` and `.env.prod` files in the root and should contain the following ENV variables:
 
 ```
-STAGE=dev|production
+STAGE=dev|prod
+AWS_ACCOUNT_ID=your-aws-account-id
+AWS_ACCOUNT_REGION=your-region
+DYNAMODB_AXIORA_TABLE=your-dynamodb-table
 JWT_SECRET_KEY=some-jwt-secret-key
 MELI_CLIENT_ID=some-mercadolibre-client-id
 MELI_CLIENT_SECRET=some-mercadolibre-secret-id
+SLACK_WEBHOOK_PATH=your-slack-webhook-path
 ```
