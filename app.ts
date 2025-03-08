@@ -1,12 +1,6 @@
-import serverless from 'serverless-http';
 import * as bodyParser from 'body-parser';
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import * as dotenv from 'dotenv'
-
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
 
 import contact from './src/contact';
 import { auth } from './src/auth';
@@ -168,4 +162,4 @@ app.post('/shopify/order-created/:shopifyUuid', async (req: Request, res: Respon
   res.json(orderCreatedResponse);
 });
 
-export const handler = serverless(app);
+export default app;

@@ -1,12 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
-import * as dotenv from 'dotenv'
 
 import { Store, Profile, Item, Order, Shipping, OAuthTokenResponse } from '../types/mercadolibre';
 import { database } from '../database';
-
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
 
 type ItemsBySkuResponse = {
   results: string[]

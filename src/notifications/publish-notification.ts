@@ -1,11 +1,6 @@
 import { APIGatewayEvent, Handler } from 'aws-lambda';
 import { SNS } from '@aws-sdk/client-sns';
-import * as dotenv from 'dotenv'
 import { Notification } from '../types/mercadolibre';
-
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
 
 const { AWS_ACCOUNT_ID, AWS_ACCOUNT_REGION, SNS_TOPIC_NAME } = process.env;
 

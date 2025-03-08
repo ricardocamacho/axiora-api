@@ -76,7 +76,7 @@ provider:
 
 functions:
   app:
-    handler: index.handler
+    handler: serverless.handler
     events:
       - http: ANY /
       - http: 'ANY /{proxy+}'

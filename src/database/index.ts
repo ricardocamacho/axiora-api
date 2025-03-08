@@ -1,12 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import * as dotenv from 'dotenv'
 
 import { Channel, DbMercadolibreData, DbShopifyData, DbStore } from '../types/common';
-
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
 
 type ChannelAccountId = number | string;
 

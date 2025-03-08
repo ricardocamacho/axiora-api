@@ -1,16 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { verify, sign, JwtPayload } from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import * as dotenv from 'dotenv'
 
 import { DbStore, DbMercadolibreData, DbShopifyData } from './types/common';
 import { database } from './database';
 import { mercadolibreApi } from './api/mercadolibre';
 import { shopifyApi } from './api/shopify';
-
-if (process.env.NODE_ENV !== 'production') {
-  dotenv.config();
-}
 
 type RequestWithEmail = Request & {
   email?: string
