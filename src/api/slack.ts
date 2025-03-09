@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import config from '../config';
 
 const axiosInstance: AxiosInstance = axios.create({
   baseURL: 'https://hooks.slack.com',
@@ -9,7 +10,7 @@ const axiosInstance: AxiosInstance = axios.create({
 
 const sendMessage = async (text: string) => {
   const response = await axiosInstance.post(
-    '/services/T01HT0XHR4N/B01T9HMPC1H/2xEacB6GJrmG9bRJDPcpDxUu',
+    `/services/${config.SLACK_WEBHOOK_PATH}`,
     {
       text
     }
