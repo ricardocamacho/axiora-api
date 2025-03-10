@@ -2,16 +2,16 @@
 
 Axiora is a SaaS that helps Latam e-commerce store owners to sell across different e-commerce marketplace and platforms, such as Shopify and Mercadolibre, synchronizing their sales & inventory to help them focus on their business needs, letting Axiora take care of the integration challenges.
 
-The backend is a NodeJS REST API exposed on an AWS API Gateway that invokes the Lambdas. For processing notifications from external platforms (Mercadolibre, Shopify) I used AWS SNS, SQS, and Step Functions. The data from notifications is processed and saved on DynamoDB. All the resources were coded and deployed using Serverless framework.
+The backend is (by default) a NodeJS REST API exposed on an AWS API Gateway that invokes the Lambdas. For processing notifications from external platforms (Mercadolibre, Shopify) I used AWS SNS, SQS, and Step Functions. The data from notifications is processed and saved on DynamoDB. All the resources were coded and deployed using Serverless framework.
 
 The frontend is a SPA based in React, Redux, Tailwind CSS, and was deployed to AWS S3. Also used AWS CloudFront, Route 53, and SSL certificate.
 
+Note: Code meets the business needs, however, there's a lot of room for improvement & refactoring.
+
 https://axiora.co/
 
-Architecture:
+## Serverless high level architecture
 ![image](https://github.com/user-attachments/assets/d108e3e5-d98b-460c-9bb9-fea1e0b0ff74)
-
-Note: Code meets the business needs, however, there's a lot of room for improvement & refactoring.
 
 ## Infrastructure
 
@@ -25,9 +25,14 @@ npm run sls-deploy:dev
 npm run sls-deploy:prod
 ```
 
-### Run as a server/container (optional)
+### Run API as a server/container (optional)
 
-You can run the API as a server (instead of a lambda):
+You can optionally have the API running in a server/container on EC2 (instead of lambda)
+
+Server/container high level architecture
+![image](https://github.com/user-attachments/assets/d29b1ec3-f0b9-4f43-9024-93fb2e9e289b)
+
+I only set up one EC2 for saving AWS costs, but if the app starts getting traffic, you can have two or more instances, then the load balancer makes more sense.
 
 Run the server locally:
 ```
