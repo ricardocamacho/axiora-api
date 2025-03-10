@@ -11,6 +11,14 @@ jspm_packages
 # Build directory (not for serverless)
 build
 
+# Terraform
+.terraform
+terraform.tfstate
+terraform.tfstate.backup
+
+# Mac
+.DS_Store
+
 # Custom ones
 .env
 .env.**
